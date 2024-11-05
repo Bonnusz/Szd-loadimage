@@ -40,6 +40,9 @@ CMyApp::CMyApp(void)
 
 	ssimSurface = SSIMSurface(imageSurface2, imageSurface3, ssimSize);
 	ssimTexture = textureFromSurface(ssimSurface);
+	ssimSurface2 = loadImageToMemory("C:/Users/User/Pictures/ac.jpg");
+	plotLineSSIM(100,0,100,ssimSurface2->h);
+	ssimTexture2 = textureFromSurface(ssimSurface2);
 
 	zoomW = 100;
 	zoomH = 50;
@@ -47,6 +50,7 @@ CMyApp::CMyApp(void)
 
 	smallW = 0;
 	smallH = 0;
+	smallChange = true;
 	bigW = 0;
 	bigH = 0;
 
@@ -261,63 +265,58 @@ Uint8 CMyApp::greyscale(Uint32 pixel, SDL_PixelFormat* format) {
 	return 0.299f * r + 0.587f * g + 0.114f * b;
 }
 
-float CMyApp::Mean(Uint8* pixels, int size) {
-	float mean = 0.f;
-	for (int i = 0; i < size; ++i) {
-		mean += pixels[i];
-	}
-	return mean / size;
-}
+float CMyApp::SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vector<Uint8>> window2, int size) {
 
-float CMyApp::Variance(Uint8* pixels, float mean, int size) {
-	float var = 0.f;
-	for (int i = 0; i < size; ++i) {
-		var +=  (pixels[i] - mean) * (pixels[i] - mean);
+	float mean1 = 0.f;
+	float mean2 = 0.f;
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			mean1 += window1[i][j];
+			mean2 += window2[i][j];
+		}
 	}
-	return var / size;
-}
+	mean1 /= size;
+	mean2 /= size;
 
-float CMyApp::Covariance(Uint8* pixels1, Uint8* pixels2, float mean1, float mean2, int size) {
+	float var1 = 0.f;
+	float var2 = 0.f;
 	float covar = 0.f;
-	for (int i = 0; i < size; ++i) {
-		covar += (pixels1[i] - mean1) * (pixels2[i] - mean2);
+
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			var1 += (window1[i][j] - mean1) * (window1[i][j] - mean1);
+			var2 += (window2[i][j] - mean2) * (window2[i][j] - mean2);
+			covar += (window1[i][j] - mean1) * (window2[i][j] - mean2);
+		}
 	}
-	return covar / size;
-}
+	var1 /= size;
+	var2 /= size;
+	covar /= size;
 
-float CMyApp::SSIM(Uint8* window1, Uint8* window2, int size) {
-	float mean1 = Mean(window1, size);
-	float mean2 = Mean(window2, size);
-	float var1 = Variance(window1, mean1, size);
-	float var2 = Variance(window2, mean2, size);
-	float covariance = Covariance(window1, window2, mean1, mean2, size);
-
-	return ((2 * mean1 * mean2 + C1) * (2 * covariance + C2)) / ((mean1 * mean1 + mean2 * mean2 + C1) * (var1 + var2 + C2));
+	return ((2 * mean1 * mean2 + C1) * (2 * covar + C2)) / ((mean1 * mean1 + mean2 * mean2 + C1) * (var1 + var2 + C2));
 }
 
 SDL_Surface* CMyApp::SSIMSurface(SDL_Surface* img1, SDL_Surface* img2, int windowSize) {
 
-	//TODO: módosítás!!
-	SDL_Surface* ssimSurface = SDL_CreateRGBSurface(0, img1->w, img1->h, img1->format->BitsPerPixel, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+	SDL_Surface* ssimSurface = SDL_CreateRGBSurface(0, img1->w, img1->h, img1->format->BitsPerPixel, 0, 0, 0, 0);
 
 	//SDL_LockSurface(ssimSurface);
 
+	std::vector<std::vector<Uint8>> grey1(windowSize, std::vector<Uint8>(windowSize));
+	std::vector<std::vector<Uint8>> grey2(windowSize, std::vector<Uint8>(windowSize));
+
 	for (int x = 0; x < ssimSurface->w; x += windowSize) {
 		for (int y = 0; y < ssimSurface->h; y += windowSize) {
-			int count = 0;
-			Uint8* grey1 = new Uint8[windowSize * windowSize];
-			Uint8* grey2 = new Uint8[windowSize * windowSize];
+
 			for (int i = 0; i < windowSize; i++) {
 				for (int j = 0; j < windowSize; j++) {
 					
-					//TODO: unify the getpixels!!
-					grey1[count] = greyscale(((Uint32*)img1->pixels)[(y + j) * ssimSurface->w + (x + i)], img1->format);
-					grey2[count] = greyscale(((Uint32*)img2->pixels)[(y + j) * ssimSurface->w + (x + i)], img2->format);
-					count++;
+					grey1[i][j] = greyscale(GetColor(img1,x+i,y+j),img1->format);
+					grey2[i][j] = greyscale(GetColor(img2,x+i,y+j),img2->format);
 				}
 			}
 
-			float ssimValue = SSIM(grey1, grey2, count);
+			float ssimValue = SSIM(grey1, grey2,windowSize);
 			Uint8 rgb = (Uint8)((ssimValue + 1.0) * 255 / 2);
 
 			for (int i = 0; i < windowSize; i++) {
@@ -331,14 +330,13 @@ SDL_Surface* CMyApp::SSIMSurface(SDL_Surface* img1, SDL_Surface* img2, int windo
 		}
 	}
 
-	//SDL_UnlockSurface(ssimSurface);
+	//SDL_UnlockSurface(ssimSurface); seperable filter matlab 
 
 	return ssimSurface;
 }
 
 void CMyApp::Render()
 {
-	// töröljük a frampuffert (GL_COLOR_BUFFER_BIT) és a mélységi Z puffert (GL_DEPTH_BUFFER_BIT)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUniform3f(glGetUniformLocation(m_programID, "eye_pos"), m_eye.x, m_eye.y, m_eye.z);
@@ -373,9 +371,11 @@ void CMyApp::MainWindow() {
 	ImGui::End();
 }
 
-void CMyApp::Window1() {
-	Uint32 red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
+Uint32 CMyApp::GetColor(SDL_Surface* surface, int x, int y) {
+	return *(Uint32*)((Uint8*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
+}
 
+void CMyApp::Window1() {
 	ImGui::Begin("First",0,window_flags);
 	ImGui::Text("A kep eleresi utvonala");
 	ImGui::InputText(" ", str1, IM_ARRAYSIZE(str1));
@@ -388,69 +388,49 @@ void CMyApp::Window1() {
 	ImTextureID my_tex_id = (ImTextureID)(intptr_t)imageTexture1;
 	
 	//ImVec2 pos = ImGui::GetCursorScreenPos();
-	ImGui::Image((void*)(intptr_t)imageTexture1, ImVec2(imageSurface1->w, imageSurface1->h));
+	ImVec2 pos = ImGui::GetCursorScreenPos();
 
+	
+	ImGui::Image((void*)(intptr_t)imageTexture1, ImVec2(imageSurface1->w, imageSurface1->h));
+	int a = 0;
+	if (ImGui::IsItemHovered())
+	{
+		if (!upd) {
+			Zoom();
+			float focus_sz = 32.0f;
+			float focus_x = io.MousePos.x - pos.x - focus_sz * 0.5f; if (focus_x < 0.0f) focus_x = 0.0f; else if (focus_x > imageSurface1->w - focus_sz) focus_x = imageSurface1->w - focus_sz;
+			float focus_y = io.MousePos.y - pos.y - focus_sz * 0.5f; if (focus_y < 0.0f) focus_y = 0.0f; else if (focus_y > imageSurface1->h - focus_sz) focus_y = imageSurface1->h - focus_sz;
+			ImVec2 uv0 = ImVec2((focus_x) / imageSurface1->w, (focus_y) / imageSurface1->h);
+			ImVec2 uv1 = ImVec2((focus_x + focus_sz) / imageSurface1->w, (focus_y + focus_sz) / imageSurface1->h);
+				u0 = uv0; //not needed
+				u1 = uv1; //not needed
+			if (smallChange) {
+				smallW = focus_x;
+				smallH = focus_y;
+			}
+			else {
+				bigW = imageSurface1->w - focus_x;
+				bigH = imageSurface1->h - focus_y;
+			}
+			std::cout << focus_x <<std::endl;
+		}
+	}
+	if (ImGui::IsItemClicked()) {
+		upd = !upd;
+	}
+	//ImGui::Image(my_tex_id, ImVec2(128, 128), u0, u1, ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
+
+	if (ImGui::Button("SmallChange")) {
+		smallChange = true;
+	}
+	if (ImGui::Button("BigChange")) {
+		smallChange = false;
+	}
 	ImGui::InputFloat("ZoomTimes",&zoomTimes,0.1f,1.f);
 	ImGui::InputInt("ZoomWidth",&zoomW);
 	ImGui::InputInt("ZoomHeight", &zoomH);
-	ImGui::InputInt("SmallWidth", &smallW);
-	ImGui::InputInt("SmallHeight", &smallH);
-	ImGui::InputInt("BigWidth", &bigW);
-	ImGui::InputInt("BigHeight", &bigH);
-	/*if (ImGui::IsItemHovered())
-	{
-		float focus_sz = 32.0f;
-		float focus_x = io.MousePos.x - pos.x - focus_sz * 0.5f; if (focus_x < 0.0f) focus_x = 0.0f; else if (focus_x > my_tex_w - focus_sz) focus_x = my_tex_w - focus_sz;
-		float focus_y = io.MousePos.y - pos.y - focus_sz * 0.5f; if (focus_y < 0.0f) focus_y = 0.0f; else if (focus_y > my_tex_h - focus_sz) focus_y = my_tex_h - focus_sz;
-		ImVec2 uv0 = ImVec2((focus_x) / my_tex_w, (focus_y) / my_tex_h);
-		ImVec2 uv1 = ImVec2((focus_x + focus_sz) / my_tex_w, (focus_y + focus_sz) / my_tex_h);
-		if (upd) {
-			u0 = uv0;
-			u1 = uv1;
-		}
-	}
-	ImGui::Image(my_tex_id, ImVec2(128, 128), u0, u1, ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
-	*/
 	if (ImGui::Button("Zoom")) {
-
-		Verify1(str1);
-
-		for (int i = zoomW*zoomTimes; i > 0; i--) {
-			for (int j = zoomH*zoomTimes; j > 0; j--) {
-				if (i == 1 || i == std::floor(zoomW * zoomTimes)|| j == 1 || j == std::floor(zoomH * zoomTimes) ) {
-					PutPixel32(imageSurface1, imageSurface1->w-i-bigW-1, imageSurface1->h-j-bigH- 1, red);
-				}
-				else {
-					PutPixel32(imageSurface1, imageSurface1->w-i-bigW-1 , imageSurface1->h-j-bigH-1, *(Uint32*)((Uint8*)imageSurface1->pixels + int((zoomH*zoomTimes-j)/zoomTimes + smallH) * imageSurface1->pitch + int((zoomW*zoomTimes-i)/zoomTimes + smallW) * imageSurface1->format->BytesPerPixel));
-				}
-			}
-		}
-		for (int i = 0+smallW; i < zoomW+smallW; i++) {
-			for (int j = 0+smallH; j < zoomH+smallH; j++) {
-				if (i == 0+smallW || j == 0+smallH || i == zoomW+smallW - 1 || j == zoomH+smallH - 1) {
-					PutPixel32(imageSurface1, i,j, red);
-				}
-			}
-		}
-		ImVec2 small1 = ImVec2(smallW, zoomH+smallH);
-		ImVec2 small2 = ImVec2(zoomW + smallW, smallH);
-		ImVec2 big1 = ImVec2(imageSurface1->w - bigW - zoomW * zoomTimes, imageSurface1->h - bigH);
-		ImVec2 big2 = ImVec2(imageSurface1->w-bigW, imageSurface1->h - bigH - zoomH * zoomTimes);
-		float slope1 = (big1.y - small1.y) / (big1.x - small1.x);
-		float slope2 = (big2.y - small2.y) / (big2.x - small2.x);
-		float b1 = small1.y - slope1 * small1.x;
-		float b2 = small2.y - slope2 * small2.x;
-		for (int i = 0; i < imageSurface1->w; i++) {
-			for (int j = 0; j < imageSurface1->h; j++) {
-				if ((j == int(slope1 * i + b1) && i>=small1.x && i<=big1.x && j>=small1.y && j<=big1.y) || ( j == int(slope2 * i + b2)) && i>=small2.x && i<=big2.x && j>=small2.y && j<=big2.y){
-					PutPixel32(imageSurface1, i, j, red);
-				}
-			}
-		}
-
-		imageTexture1 = textureFromSurface(imageSurface1);
-
-
+		Zoom();
 	}
 
 	ImGui::InputText("SavePath1", outstr1, IM_ARRAYSIZE(outstr1));
@@ -462,6 +442,123 @@ void CMyApp::Window1() {
 		currentWindow = WINDOW_MAIN;
 	}
 	ImGui::End();
+}
+
+void CMyApp::Zoom() {
+	Uint32 red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
+	Verify1(str1);
+
+	for (int i = zoomW * zoomTimes; i > 0; i--) {
+		for (int j = zoomH * zoomTimes; j > 0; j--) {
+			if (i == 1 || i == std::floor(zoomW * zoomTimes) || j == 1 || j == std::floor(zoomH * zoomTimes)) {
+				PutPixel32(imageSurface1, imageSurface1->w - i - bigW - 1, imageSurface1->h - j - bigH - 1, red);
+			}
+			else {
+				//PutPixel32(imageSurface1, imageSurface1->w-i-bigW-1 , imageSurface1->h-j-bigH-1, *(Uint32*)((Uint8*)imageSurface1->pixels + int((zoomH*zoomTimes-j)/zoomTimes + smallH) * imageSurface1->pitch + int((zoomW*zoomTimes-i)/zoomTimes + smallW) * imageSurface1->format->BytesPerPixel));
+				PutPixel32(imageSurface1, imageSurface1->w - i - bigW - 1, imageSurface1->h - j - bigH - 1, GetColor(imageSurface1, int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH)));
+			}
+		}
+	}
+	for (int i = 0 + smallW; i < zoomW + smallW; i++) {
+		for (int j = 0 + smallH; j < zoomH + smallH; j++) {
+			if (i == 0 + smallW || j == 0 + smallH || i == zoomW + smallW - 1 || j == zoomH + smallH - 1) {
+				PutPixel32(imageSurface1, i, j, red);
+			}
+		}
+	}
+	ImVec2 small1 = ImVec2(smallW, zoomH + smallH);
+	ImVec2 small2 = ImVec2(zoomW + smallW, smallH);
+	ImVec2 big1 = ImVec2(imageSurface1->w - bigW - zoomW * zoomTimes, imageSurface1->h - bigH);
+	ImVec2 big2 = ImVec2(imageSurface1->w - bigW, imageSurface1->h - bigH - zoomH * zoomTimes);
+
+	int tempSmall1y = small1.y, tempBig1y = big1.y;
+
+	if (small1.x > big1.x && small1.y < big1.y || small1.x < big1.x && small1.y > big1.y) {
+		small1.y = small2.y;
+		big1.y = big2.y;
+	}
+
+	if (small2.x > big2.x && small2.y < big2.y || small2.x < big2.x && small2.y > big2.y) {
+		small2.y = tempSmall1y;
+		big2.y = tempBig1y;
+	}
+
+	int x0 = small1.x, x1 = big1.x, y0 = small1.y, y1 = big1.y;
+	plotLine(x0, y0, x1, y1,imageSurface1);
+	x0 = small2.x, x1 = big2.x, y0 = small2.y, y1 = big2.y;
+	plotLine(x0, y0, x1, y1,imageSurface1);
+
+
+	imageTexture1 = textureFromSurface(imageSurface1);
+}
+
+void CMyApp::plotLineLow(int x0, int y0, int x1, int y1,SDL_Surface * imageSurface){
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+	int yi = 1;
+	if (dy < 0) {
+		yi = -1;
+		dy = -dy;
+	}
+
+	int D = (2 * dy) - dx;
+	int y = y0;
+
+	for (int x = x0; x < x1 ; x++){
+		PutPixel32(imageSurface, x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
+
+		if (D > 0){
+			y = y + yi;
+			D = D + (2 * (dy - dx));
+		}
+		else{
+			D = D + 2 * dy;
+		}
+	}
+}
+
+void CMyApp::plotLineHigh(int x0,int y0,int x1,int y1,SDL_Surface* imageSurface){
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+	int xi = 1;
+	if (dx < 0) {
+		xi = -1;
+		dx = -dx;
+	}
+
+	int D = (2 * dx) - dy;
+	int x = x0;
+
+	for (int y=y0;y<y1;y++){
+		PutPixel32(imageSurface, x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
+
+		if (D > 0) {
+			x = x + xi;
+			D = D + (2 * (dx - dy));
+		}
+		else {
+			D = D + 2 * dx;
+		}
+	}
+}
+
+void CMyApp::plotLine(int x0, int y0, int x1, int y1,SDL_Surface* imageSurface) {
+	if (abs(y1 - y0) < abs(x1 - x0)) {
+		if (x0 > x1) {
+			plotLineLow(x1, y1, x0, y0,imageSurface);
+		}
+		else {
+			plotLineLow(x0, y0, x1, y1,imageSurface);
+		}
+	}
+	else {
+		if (y0 > y1) {
+			plotLineHigh(x1, y1, x0, y0,imageSurface);
+		}
+		else {
+			plotLineHigh(x0, y0, x1, y1,imageSurface);
+		}
+	}
 }
 
 void CMyApp::Window2() {
@@ -488,14 +585,17 @@ void CMyApp::Window2() {
 	if (ImGui::Button("SSIM")) {
 		ssimSurface = SSIMSurface(imageSurface2, imageSurface3, ssimSize);
 		ssimTexture = textureFromSurface(ssimSurface);
+
+		plotLineSSIM(100, 0, 120, ssimSurface2->h);
+		ssimTexture2 = textureFromSurface(ssimSurface2);
 	}
 
-	ImGui::Image((void*)(intptr_t)ssimTexture, ImVec2(ssimSurface->w, ssimSurface->h));
+	ImGui::Image((void*)(intptr_t)ssimTexture2, ImVec2(ssimSurface2->w, ssimSurface2->h));
 
 
 	ImGui::InputText("SavePath2", outstr2, IM_ARRAYSIZE(outstr2));
 	if (ImGui::Button("Save2")) {
-		IMG_SavePNG(ssimSurface, outstr2);
+		IMG_SavePNG(ssimSurface2, outstr2);
 	}
 
 
@@ -505,6 +605,37 @@ void CMyApp::Window2() {
 	ImGui::End();
 }
 
+void CMyApp::plotLineSSIM(int x0, int y0, int x1, int y1) {
+	
+	if (x0 == x1) {
+		for (int i = 0; i < ssimSurface2->w; i++) {
+			for (int j = 0; j < ssimSurface2->h; j++) {
+				if (i>x0) {
+					PutPixel32(ssimSurface2, i, j, GetColor(ssimSurface, i, j));
+				}
+				else {
+					PutPixel32(ssimSurface2, i, j, GetColor(imageSurface2, i, j));
+				}
+			}
+		}
+	}
+	else{
+		float slope = (y0 - y1) / (x0 - x1);
+
+		for (int i = 0; i < ssimSurface2->w; i++) {
+			for (int j = 0; j < ssimSurface2->h; j++) {
+				if (j < slope * (i - x0) + y0) {
+					PutPixel32(ssimSurface2, i, j, GetColor(ssimSurface, i, j));
+				}
+				else {
+					PutPixel32(ssimSurface2, i, j, GetColor(imageSurface2, i, j));
+				}
+			}
+		}
+	}
+
+	plotLine(x0, y0, x1, y1, ssimSurface2);
+}
 
 void CMyApp::PutPixel32_nolock(SDL_Surface* surface, int x, int y, Uint32 color)
 {
@@ -612,7 +743,6 @@ void CMyApp::MouseWheel(SDL_MouseWheelEvent& wheel)
 {
 }
 
-// a két paraméterbe az új ablakméret szélessége (_w) és magassága (_h) található
 void CMyApp::Resize(int _w, int _h)
 {
 	glViewport(0, 0, _w, _h);

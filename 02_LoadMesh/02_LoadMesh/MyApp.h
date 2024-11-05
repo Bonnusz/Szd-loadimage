@@ -37,19 +37,23 @@ public:
 	void Verify2(const char strIn[]);
 	void Verify3(const char strIn[]);
 
+	void plotLineLow(int x0,int y0,int x1,int y1, SDL_Surface* imageSurface);
+	void plotLineHigh(int x0, int y0, int x1, int y1, SDL_Surface* imageSurface);
+	void plotLine(int x0, int y0, int x1, int y1, SDL_Surface* imageSurface);
 
+	void plotLineSSIM(int x0, int y0, int x1, int y1);
+
+	Uint32 GetColor(SDL_Surface* surface,int x,int y);
 
 	SDL_Surface* loadImageToMemory(const char* filePath);
 	GLuint textureFromSurface(SDL_Surface* surface);
 	void PutPixel32_nolock(SDL_Surface* surface, int x, int y, Uint32 color);
 	void PutPixel32(SDL_Surface* surface, int x, int y, Uint32 color);
+	void Zoom();
 
 
 	Uint8 greyscale(Uint32 pixel, SDL_PixelFormat* format);
-	float Mean(Uint8* pixels, int size);
-	float Variance(Uint8* pixels, float mean, int size);
-	float Covariance(Uint8* pixels1, Uint8* pixels2, float mean1, float mean2, int size);
-	float SSIM(Uint8* window1, Uint8* window2, int size);
+	float SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vector<Uint8>> window2, int size);
 	SDL_Surface* SSIMSurface(SDL_Surface* img1, SDL_Surface* img2, int windowSize);
 
 
@@ -132,7 +136,8 @@ protected:
 	char outstr1[128];
 	char outstr2[128];
 	int ssimSize;
-	const float C1 = 5.3565f, C2 = 108.6455f;
+	const float C1 = 0.5356f, C2 = 0.7105f;
+	bool smallChange;
 
 	SDL_Surface* imageSurface1;
 	GLuint imageTexture1;
@@ -143,5 +148,7 @@ protected:
 	GLuint imageTexture3;
 	SDL_Surface* ssimSurface;
 	GLuint ssimTexture;
+	SDL_Surface* ssimSurface2;
+	GLuint ssimTexture2;
 };
 

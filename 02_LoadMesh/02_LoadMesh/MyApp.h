@@ -17,9 +17,44 @@
 
 #include <imgui/imgui.h>
 
+
+class Image {
+public:
+	Image(void);
+	~Image(void);
+
+	void plotLine(int x0, int y0, int x1, int y1);
+
+	void PutPixel32(int x, int y, Uint32 color);
+
+	Uint32 GetColor(int x, int y);
+	void textureFromSurface();
+
+	void Load(char* s);
+	void loadImage(char* s);
+
+	SDL_Surface* getSurface() { return surface; }
+	void setSurface(SDL_Surface* surface) {this->surface = surface;}
+	GLuint getTexture() { return texture; }
+
+private:
+	SDL_Surface* surface;
+	GLuint texture;
+
+	void plotLineLow(int x0, int y0, int x1, int y1);
+	void plotLineHigh(int x0, int y0, int x1, int y1);
+
+	void PutPixel32_nolock(int x, int y, Uint32 color);
+
+};
+
+
+
 class CMyApp
 {
 public:
+
+
 	CMyApp(void);
 	~CMyApp(void);
 
@@ -28,32 +63,19 @@ public:
 
 	void Update();
 	void Render();
+	void CursorPos(float offset);
+	void Resize(int, int);
 
-	void MainWindow();
-	void Window1();
-	void Window2Column();
+	void Window1(/*Image im1, Image imZoom*/);
+	void ZoomMethod(/*Image im1, Image imZoom*/ );
+
 	void Window2AfterColumn();
 	bool Verify(char strIn[],char strInv[],int noErr);
-	void loadImage(const char strIn[],int imageSf);
-
-	void plotLineLow(int x0,int y0,int x1,int y1, SDL_Surface* imageSurface);
-	void plotLineHigh(int x0, int y0, int x1, int y1, SDL_Surface* imageSurface);
-	void plotLine(int x0, int y0, int x1, int y1, SDL_Surface* imageSurface);
-
 	void plotLineSSIM(int x, int y, float slope);
-
-	Uint32 GetColor(SDL_Surface* surface,int x,int y);
-
-	GLuint textureFromSurface(SDL_Surface* surface);
-	void PutPixel32_nolock(SDL_Surface* surface, int x, int y, Uint32 color);
-	void PutPixel32(SDL_Surface* surface, int x, int y, Uint32 color);
-	void Zoom();
-
-
+	SDL_Surface* SSIMSurface(Image img1, Image img2, int windowSize);
 	Uint8 greyscale(Uint32 pixel, SDL_PixelFormat* format);
-	float SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vector<Uint8>> window2, int size);
-	SDL_Surface* SSIMSurface(SDL_Surface* img1, SDL_Surface* img2, int windowSize);
-
+	struct colorsStruckt {Uint8 grey1, grey2, red1, red2, green1, green2, blue1, blue2, alpha1, alpha2;};
+	float SSIM(std::vector<std::vector<colorsStruckt>> window, int size, int currCol);
 
 	void KeyboardDown(SDL_KeyboardEvent&);
 	void KeyboardUp(SDL_KeyboardEvent&);
@@ -61,10 +83,8 @@ public:
 	void MouseDown(SDL_MouseButtonEvent&);
 	void MouseUp(SDL_MouseButtonEvent&);
 	void MouseWheel(SDL_MouseWheelEvent&);
-	void Resize(int, int);
 
 protected:
-
 
 	// shaderekhez szükséges változók
 	GLuint m_programID; // shaderek programja
@@ -106,9 +126,6 @@ protected:
 	glm::vec3 m_at = m_eye + toDesc(m_fi, m_theta);
 	glm::vec3 m_up = glm::vec3(0, 1, 0);
 	glm::vec3 m_forward = glm::vec3(m_at - m_eye);
-
-	bool hide = false;
-
 	float t = 1;
 
 	enum Windows {
@@ -116,48 +133,41 @@ protected:
 		WINDOW2
 	};
 
-	enum Errors {
-		NO = 0,
-		ERR1 = 1,
-		ERR2 = 2,
-		ERR3 = 3,
-		ERR4 = 4,
-		ERR5 = 5
-	};
+	Image im1;
+	Image im2;
+	Image imZoom;
+	Image imSSIM1;
+	Image imSSIM2;
 
-	Windows currentWindow;
-	Errors currentError;
 	ImGuiWindowFlags window_flags;
+	Windows currentWindow;
+	bool currentError[5];
 	char str1[128];
 	char str1verified[128];
-	char str3[128];
-	char str3verified[128];
+	char str2[128];
+	char str2verified[128];
+	char outstr1[128];
+	char outstr2[128];
 	bool upd;
 	bool updSSIM;
+
 	int zoomW;
 	int zoomH;
 	float zoomTimes;
-	float slope;
 	int smallW;
 	int smallH;
+	bool smallChange;
 	int bigW;
 	int bigH;
-	char outstr1[128];
-	char outstr2[128];
+
+	int ssimColor;
+	float slope;
 	int ssimSize;
 	const float C1 = 0.5356f, C2 = 0.7105f;
-	bool smallChange;
+	float ssimOsszeg;
 
-	SDL_Surface* imageSurface1;
-	GLuint imageTexture1;
-;
-	SDL_Surface* imageSurface3;
-	GLuint imageTexture3;
-	SDL_Surface* ssimSurface;
-	GLuint ssimTexture;
-	SDL_Surface* ssimSurface2;
-	GLuint ssimTexture2;
-	SDL_Surface* zoomSurface;
-	GLuint zoomTexture;
+	
+
 };
+
 

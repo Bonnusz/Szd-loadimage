@@ -2,8 +2,8 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-#define IM_ALLOC(_SIZE)                     ImGui::MemAlloc(_SIZE)
-#define IM_FREE(_PTR)                       ImGui::MemFree(_PTR)
+//#define IM_ALLOC(_SIZE)                     ImGui::MemAlloc(_SIZE)
+//#define IM_FREE(_PTR)                       ImGui::MemFree(_PTR)
 
 #include "MyApp.h"
 #include "GLUtils.hpp"
@@ -11,6 +11,15 @@
 #include <math.h>
 #include <imgui/imgui.h>
 #include "stb_image.h"
+
+float f(float t) {
+	//return (t - 1) * (t - 1);
+	return t * t;
+}
+
+float df(float t) {
+	return 2 * t;
+}
 
 CMyApp::CMyApp(void)
 {
@@ -24,49 +33,48 @@ CMyApp::CMyApp(void)
 	window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_HorizontalScrollbar;
 	upd = false;
 	updSSIM = false;
+	ssimColor = 0;
+
 	strcpy(str1, "C:/Users/User/Pictures/ac2.jpg");
 	strcpy(str1verified, str1);
-	strcpy(str3, "C:/Users/User/Pictures/ac.jpg");
-	strcpy(str3verified, str3);
+	strcpy(str2, "C:/Users/User/Pictures/ac.jpg");
+	strcpy(str2verified, str2);
+	strcpy(outstr1, "C:/Users/User/Pictures/save.png");
+	strcpy(outstr2, "C:/Users/User/Pictures/ssim.png");
 
-	Verify(str1, str1verified,1);
-	imageSurface1 = IMG_Load(str1verified);
-	zoomSurface = IMG_Load(str1verified);
-	imageTexture1 = textureFromSurface(imageSurface1);
-	zoomTexture = textureFromSurface(zoomSurface);
+	Verify(str1, str1verified,0);
+	Verify(str2, str2verified,1);
 
-	Verify(str3, str3verified,2);
-	imageSurface3 = IMG_Load(str3verified);
-	imageTexture3 = textureFromSurface(imageSurface3);
-	
+	im1.Load(str1verified);
+	im1.textureFromSurface();
+	imZoom.Load(str1verified);
+	imZoom.textureFromSurface();
+	im2.Load(str2verified);
+	im2.textureFromSurface();
+
 	ssimSize = 1;
 
-	ssimSurface = SSIMSurface(imageSurface1, imageSurface3, ssimSize);
-	ssimTexture = textureFromSurface(ssimSurface);
-
-	ssimSurface2 = IMG_Load(str1verified);
-	
-	plotLineSSIM(ssimSurface2->w/2,ssimSurface2->h/2,1.3f);
-	ssimTexture2 = textureFromSurface(ssimSurface2);
+	imSSIM1.setSurface(SSIMSurface(im1, im2, ssimSize));
+	imSSIM1.textureFromSurface();
+	imSSIM2.Load(str1verified);	
+	plotLineSSIM(imSSIM2.getSurface()->w / 2, imSSIM2.getSurface()->h / 2, 1.3f);
+	imSSIM2.textureFromSurface();
 
 	zoomW = 100;
 	zoomH = 50;
 	zoomTimes = 2.f;
-
 	smallW = 0;
 	smallH = 0;
 	smallChange = true;
 	bigW = 0;
 	bigH = 0;
 	slope = 1.3f;
-
-	strcpy(outstr1, "C:/Users/User/Pictures/save.png");
-	strcpy(outstr2, "C:/Users/User/Pictures/ssim.png");
-
 	currentWindow = WINDOW1;
-	currentError = NO;
-}
 
+	for (int i = 0;i< sizeof(currentError);i++) {
+		currentError[i] = false;
+	}
+}
 
 CMyApp::~CMyApp(void)
 {
@@ -259,29 +267,39 @@ void CMyApp::Update()
 		m_up);	// felfelé mutató irány a világban
 }
 
-float f(float t) {
-	//return (t - 1) * (t - 1);
-	return t * t;
-}
-
-float df(float t) {
-	return 2 * t;
-}
-
 Uint8 CMyApp::greyscale(Uint32 pixel, SDL_PixelFormat* format) {
 	Uint8 r, g, b;
 	SDL_GetRGB(pixel, format, &r, &g, &b);
 	return 0.299f * r + 0.587f * g + 0.114f * b;
 }
 
-float CMyApp::SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vector<Uint8>> window2, int size) {
+float CMyApp::SSIM(std::vector<std::vector<colorsStruckt>> window, int size, int currCol) {
 
 	float mean1 = 0.f;
 	float mean2 = 0.f;
 	for (int i = 0; i < size; i++) {
 		for (int j = 0; j < size; j++) {
-			mean1 += window1[i][j];
-			mean2 += window2[i][j];
+			switch (currCol)
+			{
+			case 0:
+				mean1 += window[i][j].grey1;
+				mean2 += window[i][j].grey2;
+				break;
+			case 1:
+				mean1 += window[i][j].red1;
+				mean2 += window[i][j].red2;
+				break;
+			case 2:
+				mean1 += window[i][j].green1;
+				mean2 += window[i][j].green2;
+				break;
+			case 3:
+				mean1 += window[i][j].blue1;
+				mean2 += window[i][j].blue2;
+				break;
+			}
+
+
 		}
 	}
 	mean1 /= size;
@@ -293,9 +311,30 @@ float CMyApp::SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vec
 
 	for (int i = 0; i < size; i++) {
 		for (int j = 0; j < size; j++) {
-			var1 += (window1[i][j] - mean1) * (window1[i][j] - mean1);
-			var2 += (window2[i][j] - mean2) * (window2[i][j] - mean2);
-			covar += (window1[i][j] - mean1) * (window2[i][j] - mean2);
+			switch (currCol)
+			{
+			case 0:
+				var1 += (window[i][j].grey1 - mean1) * (window[i][j].grey1 - mean1);
+				var2 += (window[i][j].grey2 - mean2) * (window[i][j].grey2 - mean2);
+				covar += (window[i][j].grey1 - mean1) * (window[i][j].grey2 - mean2);
+				break;
+			case 1:
+				var1 += (window[i][j].red1 - mean1) * (window[i][j].red1 - mean1);
+				var2 += (window[i][j].red2 - mean2) * (window[i][j].red2 - mean2);
+				covar += (window[i][j].red1 - mean1) * (window[i][j].red2 - mean2);
+				break;
+			case 2:
+				var1 += (window[i][j].green1 - mean1) * (window[i][j].green1 - mean1);
+				var2 += (window[i][j].green2 - mean2) * (window[i][j].green2 - mean2);
+				covar += (window[i][j].green1 - mean1) * (window[i][j].green2 - mean2);
+				break;
+			case 3:
+				var1 += (window[i][j].blue1 - mean1) * (window[i][j].blue1 - mean1);
+				var2 += (window[i][j].blue2 - mean2) * (window[i][j].blue2 - mean2);
+				covar += (window[i][j].blue1 - mean1) * (window[i][j].blue2 - mean2);
+				break;
+
+			}
 		}
 	}
 	var1 /= size;
@@ -303,45 +342,6 @@ float CMyApp::SSIM(std::vector<std::vector<Uint8>> window1, std::vector<std::vec
 	covar /= size;
 
 	return ((2 * mean1 * mean2 + C1) * (2 * covar + C2)) / ((mean1 * mean1 + mean2 * mean2 + C1) * (var1 + var2 + C2));
-}
-
-SDL_Surface* CMyApp::SSIMSurface(SDL_Surface* img1, SDL_Surface* img2, int windowSize) {
-
-	SDL_Surface* ssimSurface = SDL_CreateRGBSurface(0, img1->w, img1->h, img1->format->BitsPerPixel, 0, 0, 0, 0);
-
-	//SDL_LockSurface(ssimSurface);
-
-	std::vector<std::vector<Uint8>> grey1(windowSize, std::vector<Uint8>(windowSize));
-	std::vector<std::vector<Uint8>> grey2(windowSize, std::vector<Uint8>(windowSize));
-
-	for (int x = 0; x < ssimSurface->w; x += windowSize) {
-		for (int y = 0; y < ssimSurface->h; y += windowSize) {
-
-			for (int i = 0; i < windowSize; i++) {
-				for (int j = 0; j < windowSize; j++) {
-					
-					grey1[i][j] = greyscale(GetColor(img1,x+i,y+j),img1->format);
-					grey2[i][j] = greyscale(GetColor(img2,x+i,y+j),img2->format);
-				}
-			}
-
-			float ssimValue = SSIM(grey1, grey2,windowSize);
-			Uint8 rgb = (Uint8)((ssimValue + 1.0) * 255 / 2);
-
-			for (int i = 0; i < windowSize; i++) {
-				for (int j = 0; j < windowSize; j++) {
-					if (x + i < ssimSurface->w && y + j < ssimSurface->h) {
-
-						PutPixel32(ssimSurface, x+i, y+j, SDL_MapRGB(ssimSurface->format, rgb, rgb, rgb));
-					}
-				}
-			}
-		}
-	}
-
-	//SDL_UnlockSurface(ssimSurface); seperable filter matlab 
-
-	return ssimSurface;
 }
 
 void CMyApp::Render()
@@ -356,103 +356,195 @@ void CMyApp::Render()
 	ImGui::GetStyle().WindowRounding = 0.0f;
 
 	ImGui::Begin("Kvalitativ osszehasonlitas", 0, window_flags); 
+	ImFont* imFo = ImGui::GetFont();
 
-	if (ImGui::Button("Back")) {
+	ImGui::NewLine();
+	if (currentWindow == WINDOW1) {	CursorPos(fmax( (fmax(im1.getSurface()->w, 300) + 20) / 2 - 235 , 20));	}
+	else { CursorPos(1 * (fmax(im1.getSurface()->w, 300) + fmax(im2.getSurface()->w, 300) + 20) / 2 - 235);	}
+	imFo->Scale = 2.f;
+	ImGui::PushFont(imFo);
+	ImGui::Text("Kepek kvalitativ osszehasonlitasa");
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
+	ImGui::NewLine();
+
+	//ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 1.0f, 1.0f)); !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+
+	if (currentWindow == WINDOW1) {	CursorPos(1 * (fmax(im1.getSurface()->w, 300) + 20) / 4 - 150 / 2);	}
+	else {	CursorPos(1 * (fmax(im1.getSurface()->w, 300) + fmax(im2.getSurface()->w, 300) + 20) / 3 - 150/2);	}
+	if (ImGui::Button("Kep nagyitasa", ImVec2(150,50))) {
 		upd = false;
 		updSSIM = false;
-		if (currentWindow == WINDOW1)currentWindow = WINDOW2; else currentWindow = WINDOW1;
+		if (currentWindow == WINDOW2)currentWindow = WINDOW1;
 	}
-	
-	ImGui::Columns(2, "Columns",false);
-		
-		ImGui::Text("A kep eleresi utvonala");
-		ImGui::InputText("##Str1", str1, IM_ARRAYSIZE(str1));
-		if (ImGui::Button("Verify##str1")) {
-			upd = false;
-			if (Verify(str1, str1verified,1)) {
-				loadImage(str1verified, 1);
-			}
-		}
+	ImGui::SameLine();
 
-		if (currentError == ERR1) {
+	if (currentWindow == WINDOW1) { CursorPos(3 * (fmax(im1.getSurface()->w, 300) + 20) / 4 - 150 / 2); }
+	else {	CursorPos(2 * (fmax(im1.getSurface()->w, 300) + fmax(im2.getSurface()->w, 300) + 20) / 3 - 150/2);	}
+	if (ImGui::Button("Ket kep SSIM-e", ImVec2(150, 50))) {
+		upd = false;
+		updSSIM = false;
+		if (currentWindow == WINDOW1)currentWindow = WINDOW2;
+	}
+
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
+
+	//ImGui::PopStyleColor();
+		
+	ImGui::NewLine();
+	ImGui::NewLine();
+
+	ImGui::Text("Az elso kep eleresi utvonala"); 
+	if (currentWindow == WINDOW2) {
+		ImGui::SameLine(); 
+		CursorPos(fmax(im1.getSurface()->w, 300) + 20);
+		ImGui::Text("A masodik kep eleresi utvonala");
+	}
+
+	ImGui::PushItemWidth(300);
+	ImGui::InputText("##Str1", str1, IM_ARRAYSIZE(str1)); 
+	if (currentWindow == WINDOW2) { 
+		ImGui::SameLine(); 
+		CursorPos(fmax(im1.getSurface()->w, 300) + 20);
+		ImGui::InputText("##Str2", str2, IM_ARRAYSIZE(str2)); 
+	}
+	ImGui::PopItemWidth();
+
+	if (currentError[0]) {
+		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+		ImGui::Text("Hibas eleresi utvonal");
+		ImGui::PopStyleColor();
+	}
+	else ImGui::NewLine();
+	if (currentWindow == WINDOW2) {
+		ImGui::SameLine();
+		CursorPos(fmax(im1.getSurface()->w, 300) + 20);
+		if (currentError[1]) {
 			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Hibas eleresi utvonal");
 			ImGui::PopStyleColor();
 		}
 		else ImGui::NewLine();
+	}
 
-		if (currentWindow == WINDOW1) {
-			Window1();
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+	if (ImGui::Button("Betoltes##str1", ImVec2(150,50))) {
+		upd = false;
+		if (Verify(str1, str1verified,0)) {
+			im1.loadImage(str1verified);
+			imZoom.loadImage(str1verified);
+			if (zoomW > fmin(im1.getSurface()->w / zoomTimes - 1, im1.getSurface()->w - 1)) { zoomW = fmin(im1.getSurface()->w / zoomTimes - 1, im1.getSurface()->w - 1);} // bigW = im1.getSurface()->w - zoomW * zoomTimes;
+			if (zoomH > fmin(im1.getSurface()->h / zoomTimes - 1, im1.getSurface()->h - 1)) { zoomH = fmin(im1.getSurface()->h / zoomTimes - 1, im1.getSurface()->h - 1);} // bigH = im1.getSurface()->h - zoomH * zoomTimes;
 		}
-		else ImGui::Image((void*)(intptr_t)zoomTexture, ImVec2(zoomSurface->w, zoomSurface->h));
-
-	ImGui::NextColumn();
-	
-		if (currentWindow == WINDOW2) {
-			Window2Column();
+	}
+	if (currentWindow == WINDOW2){
+		ImGui::SameLine();
+		CursorPos(fmax(im1.getSurface()->w, 300) + 20 );
+		if (ImGui::Button("Betoltes##str2", ImVec2(150, 50))) {
+			updSSIM = false;
+			if (Verify(str2, str2verified, 1)) {
+				im2.loadImage(str2verified);
+			}
 		}
+	}
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
 
-	ImGui::Columns();
+	ImGui::NewLine();
+
+	if (currentWindow == WINDOW1) {
+		Window1();
+	}
+	else ImGui::Image((void*)(intptr_t)im1.getTexture(), ImVec2(im1.getSurface()->w, im1.getSurface()->h));
+	if (currentWindow == WINDOW2) {
+		ImGui::SameLine();
+		CursorPos(fmax(im1.getSurface()->w, 300) + 20);
+		ImGui::Image((void*)(intptr_t)im2.getTexture(), ImVec2(im2.getSurface()->w, im2.getSurface()->h));
+	}
 		
 	if (currentWindow == WINDOW2) {
 		Window2AfterColumn();
 	}
 
+	ImGui::NewLine();
+	ImGui::Text("A kep mentesi utvonala:");
+
 	if (currentWindow == WINDOW1) {
+		ImGui::PushItemWidth(300);
 		ImGui::InputText("##SavePath1", outstr1, IM_ARRAYSIZE(outstr1));
-		if (currentError == ERR3) {
+		ImGui::PopItemWidth();
+		if (currentError[2]) {
 			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Hibas mentesi utvonal");
 			ImGui::PopStyleColor();
 		}
-		if (ImGui::Button("Save##1")) {
+
+		imFo->Scale = 1.3f;
+		ImGui::PushFont(imFo);
+		if (ImGui::Button("Mentes##1",ImVec2(150,50))) {
 			upd = false;
 			struct stat sb;
 			if (stat(outstr1, &sb) != 0) {
-				currentError = ERR3;
+				currentError[2] = true;
 			}
 			else {
-				IMG_SavePNG(zoomSurface, outstr1);
-				currentError = NO;
+				IMG_SavePNG(imZoom.getSurface(), outstr1);
+				currentError[2] = false;
 			}
 		}
+		imFo->Scale = 1.f;
+		ImGui::PopFont();
 	}
 	else {
+		ImGui::PushItemWidth(300);
 		ImGui::InputText("##SavePath2", outstr2, IM_ARRAYSIZE(outstr2));
-		if (currentError == ERR4) {
+		ImGui::PopItemWidth();
+		if (currentError[3]) {
 			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Hibas mentesi utvonal");
 			ImGui::PopStyleColor();
 		}
-		if (ImGui::Button("Save##2")) {
+
+		imFo->Scale = 1.3f;
+		ImGui::PushFont(imFo);
+		if (ImGui::Button("Mentes##2", ImVec2(150, 50))) {
 			updSSIM = false;
 			struct stat sb;
 			if (stat(outstr2, &sb) != 0) {
-				currentError = ERR4;
+				currentError[3] = true;
 			}
 			else {
-				IMG_SavePNG(ssimSurface2, outstr2);
-				currentError = NO;
+				IMG_SavePNG(imSSIM2.getSurface(), outstr2);
+				currentError[3] = false;
 			}
 		}
+		imFo->Scale = 1.f;
+		ImGui::PopFont();
 	}
 
 	ImGui::End();
 }
 
-Uint32 CMyApp::GetColor(SDL_Surface* surface, int x, int y) {
-	return *(Uint32*)((Uint8*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
+void CMyApp::CursorPos(float offset) {
+	ImGui::SetCursorPosX(0);
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 }
 
 void CMyApp::Window1() {	
-
+	ImFont* imFo = ImGui::GetFont();
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
-	ImGui::Image((void*)(intptr_t)zoomTexture, ImVec2(zoomSurface->w, zoomSurface->h));
+
+	ImGui::Image((void*)(intptr_t)imZoom.getTexture(), ImVec2(imZoom.getSurface()->w, imZoom.getSurface()->h));
+		
 	if (ImGui::IsItemHovered())
 	{
 		if (upd) {
-			Zoom();
+			ZoomMethod();
 			float focus_sz_x = 0.f;
 			float focus_sz_y = 0.f;
 			if (smallChange) {
@@ -465,24 +557,23 @@ void CMyApp::Window1() {
 			}
 			float focus_x = io.MousePos.x - pos.x - focus_sz_x * 0.5f; 
 			if (smallChange && focus_x < 0.0f ) focus_x = 0.0f;
-			else if (smallChange && focus_x > imageSurface1->w - focus_sz_x) focus_x = imageSurface1->w - focus_sz_x;
+			else if (smallChange && focus_x > im1.getSurface()->w - focus_sz_x) focus_x = im1.getSurface()->w - focus_sz_x;
 			else if (!smallChange && focus_x < zoomW * zoomTimes+1) focus_x = zoomW * zoomTimes+1;
-			else if (!smallChange && focus_x > imageSurface1->w) focus_x = imageSurface1->w;
+			else if (!smallChange && focus_x > im1.getSurface()->w) focus_x = im1.getSurface()->w;
 			float focus_y = io.MousePos.y - pos.y - focus_sz_y * 0.5f; 
-			std::cout << focus_x << " " << focus_y << std::endl;
 			if (smallChange && focus_y < 0.0f) focus_y = 0.0f;
-			else if (smallChange && focus_y > imageSurface1->h - focus_sz_y) focus_y = imageSurface1->h - focus_sz_y;
+			else if (smallChange && focus_y > im1.getSurface()->h - focus_sz_y) focus_y = im1.getSurface()->h - focus_sz_y;
 			else if (!smallChange && focus_y < zoomH * zoomTimes + 1) focus_y = zoomH * zoomTimes + 1;
-			else if (!smallChange && focus_y > imageSurface1->h) focus_y = imageSurface1->h;
-			ImVec2 uv0 = ImVec2((focus_x) / imageSurface1->w, (focus_y) / imageSurface1->h);
-			ImVec2 uv1 = ImVec2((focus_x + focus_sz_x) / imageSurface1->w, (focus_y + focus_sz_y) / imageSurface1->h);
+			else if (!smallChange && focus_y > im1.getSurface()->h) focus_y = im1.getSurface()->h;
+			ImVec2 uv0 = ImVec2((focus_x) / im1.getSurface()->w, (focus_y) / im1.getSurface()->h);
+			ImVec2 uv1 = ImVec2((focus_x + focus_sz_x) / im1.getSurface()->w, (focus_y + focus_sz_y) / im1.getSurface()->h);
 			if (smallChange) {
 				smallW = focus_x;
 				smallH = focus_y;
 			}
 			else {
-				bigW = imageSurface1->w - focus_x;
-				bigH = imageSurface1->h - focus_y;
+				bigW = im1.getSurface()->w - focus_x;
+				bigH = im1.getSurface()->h - focus_y;
 			}
 		}
 	}
@@ -490,49 +581,82 @@ void CMyApp::Window1() {
 		upd = !upd;
 	}
 
-	if (ImGui::Button("SmallChange")) {
+	ImGui::NewLine();
+
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+	CursorPos(1 * fmax(im1.getSurface()->w, 300) / 4 - 70);
+	if (ImGui::Button("KisTeglalap",ImVec2(140,40))) {
 		upd = false;
 		smallChange = true;
 	}
-	if (ImGui::Button("BigChange")) {
+	ImGui::SameLine();
+	CursorPos(3 * fmax(im1.getSurface()->w, 300) / 4 - 70);
+	if (ImGui::Button("Nagyteglalap", ImVec2(140, 40))) {
 		upd = false;
 		smallChange = false;
 	}
-	ImGui::InputFloat("##ZoomTimes",&zoomTimes,0.1f,1.f);
-	ImGui::InputInt("##ZoomWidth",&zoomW);
-	ImGui::InputInt("##ZoomHeight", &zoomH);
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
+
+	ImGui::NewLine();
+
+	ImGui::Text("Nagyitando terulet szelessege:");
+	ImGui::SameLine();
+	CursorPos(230);
+	ImGui::PushItemWidth(fmax(im1.getSurface()->w,300) - 230);
+	ImGui::InputInt("##ZoomWidth",&zoomW,0);
+	ImGui::PopItemWidth();
+	if (zoomW < 1) {zoomW = 1;} 
+	if (zoomW > fmin(im1.getSurface()->w / zoomTimes - 1, im1.getSurface()->w - 1)) { zoomW = fmin(im1.getSurface()->w / zoomTimes - 1, im1.getSurface()->w - 1);  } //bigW = im1.getSurface()->w - zoomW * zoomTimes;
+	ImGui::Text("Nagyitando terulet magassaga:");
+	ImGui::SameLine();
+	CursorPos(230);
+	ImGui::PushItemWidth(fmax(im1.getSurface()->w, 300) - 230);
+	ImGui::InputInt("##ZoomHeight", &zoomH,0);
+	ImGui::PopItemWidth();
+
+	ImGui::Text("Nagyitas merteke:");
+	ImGui::SameLine();
+	CursorPos(150);
+	ImGui::PushItemWidth(fmax(im1.getSurface()->w, 300) - 150);
+	ImGui::SliderFloat("##ZoomTimes", &zoomTimes, 0.1f, 10.0f, "%.4f");
+	ImGui::PopItemWidth();
+
+	if (zoomH < 1) {zoomH = 1;}
+	if (zoomH > fmin(im1.getSurface()->h / zoomTimes - 1, im1.getSurface()->h - 1)) { zoomH = fmin(im1.getSurface()->h / zoomTimes - 1, im1.getSurface()->h - 1);  } //bigH = im1.getSurface()->h - zoomH * zoomTimes;
 }
 
-void CMyApp::Zoom() {
+void CMyApp::ZoomMethod() {
 	Uint32 red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
 	
-	for (int i = 0; i < zoomSurface->w; i++) {
-		for (int j = 0; j < zoomSurface->h; j++) {
-			PutPixel32(zoomSurface, i, j, GetColor(imageSurface1, i, j));
+	for (int i = 0; i < imZoom.getSurface()->w; i++) {
+		for (int j = 0; j < imZoom.getSurface()->h; j++) {
+			imZoom.PutPixel32(i, j, im1.GetColor(i, j));
 		}
 	}
 
 	for (int i = zoomW * zoomTimes; i > 0; i--) {
 		for (int j = zoomH * zoomTimes; j > 0; j--) {
 			if (i == 1 || i == std::floor(zoomW * zoomTimes) || j == 1 || j == std::floor(zoomH * zoomTimes)) {
-				PutPixel32(zoomSurface, zoomSurface->w - i - bigW - 1, zoomSurface->h - j - bigH - 1, red);
+				imZoom.PutPixel32(imZoom.getSurface()->w - i - bigW - 1, imZoom.getSurface()->h - j - bigH - 1, red);
 			}
 			else {
-				PutPixel32(zoomSurface, zoomSurface->w - i - bigW - 1, zoomSurface->h - j - bigH - 1, GetColor(zoomSurface, int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH)));
+				imZoom.PutPixel32(imZoom.getSurface()->w - i - bigW - 1, imZoom.getSurface()->h - j - bigH - 1, imZoom.GetColor(int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH)));
 			}
 		}
 	}
 	for (int i = 0 + smallW; i < zoomW + smallW; i++) {
 		for (int j = 0 + smallH; j < zoomH + smallH; j++) {
 			if (i == 0 + smallW || j == 0 + smallH || i == zoomW + smallW - 1 || j == zoomH + smallH - 1) {
-				PutPixel32(zoomSurface, i, j, red);
+				imZoom.PutPixel32(i, j, red);
 			}
 		}
 	}
 	ImVec2 small1 = ImVec2(smallW, zoomH + smallH);
 	ImVec2 small2 = ImVec2(zoomW + smallW, smallH);
-	ImVec2 big1 = ImVec2(zoomSurface->w - bigW - zoomW * zoomTimes, zoomSurface->h - bigH);
-	ImVec2 big2 = ImVec2(zoomSurface->w - bigW, zoomSurface->h - bigH - zoomH * zoomTimes);
+	ImVec2 big1 = ImVec2(imZoom.getSurface()->w - bigW - zoomW * zoomTimes, imZoom.getSurface()->h - bigH);
+	ImVec2 big2 = ImVec2(imZoom.getSurface()->w - bigW, imZoom.getSurface()->h - bigH - zoomH * zoomTimes);
 
 	int tempSmall1y = small1.y, tempBig1y = big1.y;
 
@@ -547,190 +671,273 @@ void CMyApp::Zoom() {
 	}
 
 	int x0 = small1.x, x1 = big1.x, y0 = small1.y, y1 = big1.y;
-	plotLine(x0, y0, x1, y1, zoomSurface);
+	imZoom.plotLine(x0, y0, x1, y1);
 	x0 = small2.x, x1 = big2.x, y0 = small2.y, y1 = big2.y;
-	plotLine(x0, y0, x1, y1, zoomSurface);
+	imZoom.plotLine(x0, y0, x1, y1);
 
-	zoomTexture = textureFromSurface(zoomSurface);
-}
-
-void CMyApp::plotLineLow(int x0, int y0, int x1, int y1,SDL_Surface * imageSurface){
-	int dx = x1 - x0;
-	int dy = y1 - y0;
-	int yi = 1;
-	if (dy < 0) {
-		yi = -1;
-		dy = -dy;
-	}
-
-	int D = (2 * dy) - dx;
-	int y = y0;
-
-	for (int x = x0; x < x1 ; x++){
-		PutPixel32(imageSurface, x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
-
-		if (D > 0){
-			y = y + yi;
-			D = D + (2 * (dy - dx));
-		}
-		else{
-			D = D + 2 * dy;
-		}
-	}
-}
-
-void CMyApp::plotLineHigh(int x0,int y0,int x1,int y1,SDL_Surface* imageSurface){
-	int dx = x1 - x0;
-	int dy = y1 - y0;
-	int xi = 1;
-	if (dx < 0) {
-		xi = -1;
-		dx = -dx;
-	}
-
-	int D = (2 * dx) - dy;
-	int x = x0;
-
-	for (int y=y0;y<y1;y++){
-		PutPixel32(imageSurface, x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
-
-		if (D > 0) {
-			x = x + xi;
-			D = D + (2 * (dx - dy));
-		}
-		else {
-			D = D + 2 * dx;
-		}
-	}
-}
-
-void CMyApp::plotLine(int x0, int y0, int x1, int y1,SDL_Surface* imageSurface) {
-	if (abs(y1 - y0) < abs(x1 - x0)) {
-		if (x0 > x1) {
-			plotLineLow(x1, y1, x0, y0,imageSurface);
-		}
-		else {
-		plotLineLow(x0, y0, x1, y1, imageSurface);
-		}
-	}
-	else {
-	if (y0 > y1) {
-		plotLineHigh(x1, y1, x0, y0, imageSurface);
-	}
-	else {
-		plotLineHigh(x0, y0, x1, y1, imageSurface);
-	}
-	}
-}
-
-void CMyApp::Window2Column() {
-
-	ImGui::Text("A kep eleresi utvonala");
-	ImGui::InputText("##Str3", str3, IM_ARRAYSIZE(str3));
-	if (ImGui::Button("Verify##str3")) {
-		updSSIM = false;
-		if (Verify(str3, str3verified, 2)) {
-			loadImage(str3verified, 3);
-		}
-	}
-
-	if (currentError == ERR2) {
-		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-		ImGui::Text("Hibas eleresi utvonal");
-		ImGui::PopStyleColor();
-	}
-	else ImGui::NewLine();
-
-	ImGui::Image((void*)(intptr_t)imageTexture3, ImVec2(imageSurface3->w, imageSurface3->h));
+	imZoom.textureFromSurface();
 }
 
 void CMyApp::Window2AfterColumn() {
+	ImFont* imFo = ImGui::GetFont();
 
-	if (currentError == ERR5) {
+	ImGui::NewLine();
+
+	ImGui::Text("Az atmenet meredeksege:");
+	ImGui::SameLine();
+	CursorPos(200);
+	ImGui::PushItemWidth(200);
+	ImGui::SliderFloat("##slope", &slope, 1.0f, 10.0f, "%.4f", 3.0f);
+	ImGui::PopItemWidth();
+
+	ImGui::Text("Az SSIM szine: "); ImGui::SameLine();
+	ImGui::RadioButton("Fekete-Feher", &ssimColor, 0); ImGui::SameLine();
+	ImGui::RadioButton("Piros", &ssimColor, 1); ImGui::SameLine();
+	ImGui::RadioButton("Zold", &ssimColor, 2);  ImGui::SameLine();
+	ImGui::RadioButton("Kek", &ssimColor, 3);  ImGui::SameLine();
+	ImGui::RadioButton("Osszes szin", &ssimColor, 4);
+
+	ImGui::Text("Az SSIM szeletek merete:");
+	ImGui::SameLine();
+	CursorPos(200);
+	ImGui::PushItemWidth(100);
+	ImGui::InputInt("##Size", &ssimSize,0);
+	ImGui::PopItemWidth();
+	if (ssimSize < 1) {
+		ssimSize = 1;
+	}
+	if (ssimSize > fmin(im1.getSurface()->w / 2, im1.getSurface()->h / 2)) {
+		ssimSize = fmin(im1.getSurface()->w / 2, im1.getSurface()->h / 2);
+	}
+
+	ImGui::NewLine();
+
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+	if (ImGui::Button("SSIM",ImVec2(150,50))) {
+		updSSIM = false;
+
+		if (im1.getSurface()->h == im2.getSurface()->h && im1.getSurface()->w == im2.getSurface()->w) {
+			imSSIM1.setSurface(SSIMSurface(im1, im2, ssimSize));
+			imSSIM1.textureFromSurface();
+			imSSIM2.Load(str1verified);
+			plotLineSSIM(imSSIM2.getSurface()->w / 2, imSSIM2.getSurface()->h / 2, slope);
+			imSSIM2.textureFromSurface();
+			currentError[4] = false;
+		}
+		else currentError[4] = true;
+	}
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
+
+	if (currentError[4]) {
 		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 		ImGui::Text("A kepek meretenek meg kell egyeznie");
 		ImGui::PopStyleColor();
 	}
-	else ImGui::NewLine();
 
-	ImGui::InputFloat("##Slope", &slope, 0.1f, 1.f);
-	if (slope < 1.f) slope = 1.f;
-
-	if (ImGui::Button("SSIM")) {
-		updSSIM = false;
-
-		if (imageSurface1->h == imageSurface3->h && imageSurface1->w == imageSurface3->w) {
-			ssimSurface = SSIMSurface(imageSurface1, imageSurface3, ssimSize);
-			ssimTexture = textureFromSurface(ssimSurface);
-			ssimSurface2 = IMG_Load(str1verified);
-			plotLineSSIM(ssimSurface2->w / 2, ssimSurface2->h / 2, slope);
-			ssimTexture2 = textureFromSurface(ssimSurface2);
-			currentError = NO;
-		}
-		else currentError = ERR5;
-	}
+	ImGui::NewLine();
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
-	ImGui::Image((void*)(intptr_t)ssimTexture2, ImVec2(ssimSurface2->w, ssimSurface2->h));
+	ImGui::Image((void*)(intptr_t)imSSIM2.getTexture(), ImVec2(imSSIM2.getSurface()->w, imSSIM2.getSurface()->h));
 	if (ImGui::IsItemHovered())
 	{
 		if (updSSIM) {
 			plotLineSSIM(io.MousePos.x - pos.x, io.MousePos.y - pos.y, slope);
-			ssimTexture2 = textureFromSurface(ssimSurface2);
+			imSSIM2.textureFromSurface();
 		}
 	}
 	if (ImGui::IsItemClicked()) {
 		updSSIM = !updSSIM;
 	}
-	ImGui::InputInt("##Size", &ssimSize);
+
+	ImGui::Text("Osszesitett SSIM ertek: %f", ssimOsszeg);
+
+}
+
+SDL_Surface* CMyApp::SSIMSurface(Image img1, Image img2, int windowSize) {
+
+	SDL_Surface* ssimSurface = SDL_CreateRGBSurface(0, img1.getSurface()->w, img1.getSurface()->h, img1.getSurface()->format->BitsPerPixel, 0, 0, 0, 0);
+	Image seged;
+	seged.setSurface(ssimSurface);
+
+	//SDL_LockSurface(ssimSurface);
+
+	std::vector<std::vector<colorsStruckt>> colorVect(windowSize, std::vector<colorsStruckt>(windowSize));
+
+	//std::vector<std::vector<Uint8>> grey1(windowSize, std::vector<Uint8>(windowSize));
+	//std::vector<std::vector<Uint8>> grey2(windowSize, std::vector<Uint8>(windowSize));
+
+	//std::vector<std::vector<Uint8>> red1(windowSize, std::vector<Uint8>(windowSize));
+	//std::vector<std::vector<Uint8>> red2(windowSize, std::vector<Uint8>(windowSize));
+
+	//std::vector<std::vector<Uint8>> green1(windowSize, std::vector<Uint8>(windowSize));
+	//std::vector<std::vector<Uint8>> green2(windowSize, std::vector<Uint8>(windowSize));
+
+	//std::vector<std::vector<Uint8>> blue1(windowSize, std::vector<Uint8>(windowSize));
+	//std::vector<std::vector<Uint8>> blue2(windowSize, std::vector<Uint8>(windowSize));
+
+	ssimOsszeg = 0.f;
+	int num = 0;
+
+	for (int x = 0; x < seged.getSurface()->w; x += windowSize) {
+		for (int y = 0; y < seged.getSurface()->h; y += windowSize) {
+
+			for (int i = 0; i < windowSize; i++) {
+				for (int j = 0; j < windowSize; j++) {
+
+					Uint8 r, g, b, a;
+					Uint8 r2, g2, b2, a2;
+					SDL_GetRGBA(img1.GetColor(x + i, y + j), img1.getSurface()->format, &r, &g, &b,&a);
+					SDL_GetRGBA(img2.GetColor(x + i, y + j), img2.getSurface()->format, &r2, &g2, &b2,&a2);
+
+					switch (ssimColor)
+					{
+					case 0:
+						colorVect[i][j].grey1 = greyscale(img1.GetColor(x + i, y + j), img1.getSurface()->format);
+						colorVect[i][j].grey2 = greyscale(img2.GetColor(x + i, y + j), img2.getSurface()->format);
+						break;
+					case 1:
+						colorVect[i][j].red1 = r;
+						colorVect[i][j].red2 = r2;
+						break;
+					case 2:
+						colorVect[i][j].green1 = g;
+						colorVect[i][j].green2 = g2;
+						break;
+					case 3:
+						colorVect[i][j].blue1 = b;
+						colorVect[i][j].blue2 = b2;
+						break;
+					case 4:
+						colorVect[i][j].red1 = r;
+						colorVect[i][j].red2 = r2;
+						colorVect[i][j].green1 = g;
+						colorVect[i][j].green2 = g2;
+						colorVect[i][j].blue1 = b;
+						colorVect[i][j].blue2 = b2;
+						break;
+					}
+
+					colorVect[i][j].alpha1 = a;
+					colorVect[i][j].alpha2 = a2;
+					
+				}
+			}
+			float ssimGrey = 0.f;
+			float ssimRed = 0.f;
+			float ssimGreen = 0.f;
+			float ssimBlue = 0.f;
+			Uint8 ymc,rU,gU,bU;
+
+			switch (ssimColor)
+			{
+			case 0:
+				ssimGrey = SSIM(colorVect, windowSize,0);
+				ssimOsszeg += ssimGrey;
+				num++;
+				ymc = (Uint8)((ssimGrey + 1.0) * 255 / 2);
+				break; 
+			case 1:
+				ssimRed = SSIM(colorVect, windowSize,1);
+				ssimOsszeg += ssimRed;
+				num++;
+				ymc = (Uint8)((ssimRed + 1.0) * 255 / 2);
+				break;
+			case 2:
+				ssimGreen = SSIM(colorVect, windowSize,2);
+				ssimOsszeg += ssimGreen;
+				num++;
+				ymc = (Uint8)((ssimGreen + 1.0) * 255 / 2);
+				break;
+			case 3:
+				ssimBlue = SSIM(colorVect, windowSize,3);
+				ssimOsszeg += ssimBlue;
+				num++;
+				ymc = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				break;
+			case 4:
+				ssimRed = SSIM(colorVect, windowSize,1);
+				ssimOsszeg += ssimRed;
+				num++;
+				ssimGreen = SSIM(colorVect, windowSize,2);
+				ssimOsszeg += ssimGreen;
+				num++;
+				ssimBlue = SSIM(colorVect, windowSize,3);
+				ssimOsszeg += ssimBlue;
+				num++;
+				rU = (Uint8)((ssimRed + 1.0) * 255 / 2);
+				gU = (Uint8)((ssimGreen + 1.0) * 255 / 2);
+				bU = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				break;
+			}
+			//red 0 0 255   green 0 255 0   blue 255 0 0     
+			//r = -y -m	, g = -y -c , b = -m -c
+			//Uint8 ymc = (Uint8)((ssimValue + 1.0) * 255 / 2); 
+
+			for (int i = 0; i < windowSize; i++) {
+				for (int j = 0; j < windowSize; j++) {
+					if (x + i < seged.getSurface()->w && y + j < seged.getSurface()->h) {
+
+						switch (ssimColor)
+						{
+						case 0:
+							seged.PutPixel32(x + i, y + j, SDL_MapRGBA(seged.getSurface()->format, ymc, ymc, ymc, colorVect[i][j].alpha1));
+							break;
+						case 1:
+							seged.PutPixel32(x + i, y + j, SDL_MapRGBA(seged.getSurface()->format, ymc, ymc, 255, colorVect[i][j].alpha1));
+							break;
+						case 2:
+							seged.PutPixel32(x + i, y + j, SDL_MapRGBA(seged.getSurface()->format, ymc, 255, ymc, colorVect[i][j].alpha1));
+							break;
+						case 3:
+							seged.PutPixel32(x + i, y + j, SDL_MapRGBA(seged.getSurface()->format, 255, ymc, ymc, colorVect[i][j].alpha1));
+							break;
+						case 4:
+							seged.PutPixel32(x + i, y + j, SDL_MapRGBA(seged.getSurface()->format, bU, gU, rU, colorVect[i][j].alpha1));
+							break;
+						}
+						
+					}
+				}
+			}
+		}
+	}
+
+	ssimOsszeg =  ssimOsszeg / num;
+
+	//SDL_UnlockSurface(ssimSurface); seperable filter matlab 
+
+	return ssimSurface;
 }
 
 void CMyApp::plotLineSSIM(int x, int y, float slope) {
 
-	ImVec2 first, second;
+	//ImVec2 first, second;
 
-	for (int i = 0; i < ssimSurface2->w; i++) {
-		for (int j = 0; j < ssimSurface2->h; j++) {
+	for (int i = 0; i < imSSIM2.getSurface()->w; i++) {
+		for (int j = 0; j < imSSIM2.getSurface()->h; j++) {
 			if (j < slope * (i - x) + y) {
-				PutPixel32(ssimSurface2, i, j, GetColor(ssimSurface, i, j));
+				imSSIM2.PutPixel32(i, j, imSSIM1.GetColor(i, j));
 			}
 			else {
-				PutPixel32(ssimSurface2, i, j, GetColor(imageSurface1, i, j));
+				imSSIM2.PutPixel32(i, j, im1.GetColor(i, j));
 			}
 
-			if ((j == 0 || i == 0) && j == (int)(slope * (i - x) + y)) {
+			/*if ((j == 0 || i == 0) && j == (int)(slope * (i - x) + y)) {
 				first.x = i;
 				first.y = j;
 			}
 			if ((j == ssimSurface2->h - 1 || i == ssimSurface2->w - 1) && j  == (int)(slope * (i - x) + y)) {
 				second.x = i;
 				second.y = j;
-			}
+			}*/
 		}
 	}
 
-	
-
-	plotLine(first.x,first.y,second.x,second.y , ssimSurface2);
+	//plotLine(first.x,first.y,second.x,second.y , ssimSurface2);
 }
-
-void CMyApp::PutPixel32_nolock(SDL_Surface* surface, int x, int y, Uint32 color)
-{
-	Uint8* pixel = (Uint8*)surface->pixels;
-	pixel += (y * surface->pitch) + x * surface ->format->BytesPerPixel;
-	*((Uint32*)pixel) = color;
-}
-
-void CMyApp::PutPixel32(SDL_Surface* surface, int x, int y, Uint32 color)
-{
-	if (SDL_MUSTLOCK(surface))
-		SDL_LockSurface(surface);
-	PutPixel32_nolock(surface, x, y, color);
-	if (SDL_MUSTLOCK(surface))
-		SDL_UnlockSurface(surface);
-}
-
 
 bool CMyApp::Verify(char* filePath , char* filePathv, int noErr) {
 
@@ -738,11 +945,11 @@ bool CMyApp::Verify(char* filePath , char* filePathv, int noErr) {
 	if (!imageSurface) {
 		imageSurface = IMG_Load("texture.bmp");
 		strcpy(filePathv, "texture.bmp");
-		currentError = static_cast<Errors>(noErr);
+		currentError[noErr] = true;
 	}
 	else {
 		strcpy(filePathv, filePath);
-		currentError = NO;
+		currentError[noErr] = false;
 	}
 	if (!imageSurface) {
 		printf("Failed to load image (also backup image got deleted): %s\n", IMG_GetError());
@@ -751,46 +958,6 @@ bool CMyApp::Verify(char* filePath , char* filePathv, int noErr) {
 	SDL_FreeSurface(imageSurface);
 	return true;
 }
-
-void CMyApp::loadImage(const char strIn[], int imageSf) {  
-
-	switch (imageSf)
-	{
-	case 1:
-		SDL_FreeSurface(imageSurface1);
-		imageSurface1 = IMG_Load(strIn);
-		imageTexture1 = textureFromSurface(imageSurface1);
-		zoomSurface = IMG_Load(strIn);
-		zoomTexture = textureFromSurface(imageSurface1);
-		break;
-	case 3:
-		SDL_FreeSurface(imageSurface3);
-		imageSurface3 = IMG_Load(strIn);
-		imageTexture3 = textureFromSurface(imageSurface3);
-		break;
-	default:
-		break;
-	}
-}
-
-GLuint CMyApp::textureFromSurface(SDL_Surface* surface) {
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-
-	GLenum format = GL_RGBA;
-	if (surface->format->BytesPerPixel == 3) {
-		format = GL_RGB;
-	}
-
-	glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-	return textureID;
-}
-
 
 glm::vec3 CMyApp::toDesc(float fi, float theta) {
 	return glm::vec3(sin(fi) * cos(theta), cos(fi), -sin(fi) * sin(theta));
@@ -828,4 +995,130 @@ void CMyApp::Resize(int _w, int _h)
 		_w / (float)_h,	// ablakmereteknek megfelelo nezeti arany
 		0.01f,			// kozeli vagosik
 		100.0f);		// tavoli vagosik
+}
+
+
+Image::Image(void)
+{
+}
+
+Image::~Image(void)
+{
+}
+
+void Image::plotLine(int x0, int y0, int x1, int y1) {
+	if (abs(y1 - y0) < abs(x1 - x0)) {
+		if (x0 > x1) {
+			plotLineLow(x1, y1, x0, y0);
+		}
+		else {
+			plotLineLow(x0, y0, x1, y1);
+		}
+	}
+	else {
+		if (y0 > y1) {
+			plotLineHigh(x1, y1, x0, y0);
+		}
+		else {
+			plotLineHigh(x0, y0, x1, y1);
+		}
+	}
+}
+
+void Image::plotLineLow(int x0, int y0, int x1, int y1){
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+	int yi = 1;
+	if (dy < 0) {
+		yi = -1;
+		dy = -dy;
+	}
+
+	int D = (2 * dy) - dx;
+	int y = y0;
+
+	for (int x = x0; x < x1 ; x++){
+		PutPixel32(x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
+
+		if (D > 0){
+			y = y + yi;
+			D = D + (2 * (dy - dx));
+		}
+		else{
+			D = D + 2 * dy;
+		}
+	}
+}
+
+void Image::plotLineHigh(int x0,int y0,int x1,int y1){
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+	int xi = 1;
+	if (dx < 0) {
+		xi = -1;
+		dx = -dx;
+	}
+
+	int D = (2 * dx) - dy;
+	int x = x0;
+
+	for (int y=y0;y<y1;y++){
+		PutPixel32(x, y, (255 << 24) | (0 << 16) | (0 << 8) | 255);
+
+		if (D > 0) {
+			x = x + xi;
+			D = D + (2 * (dx - dy));
+		}
+		else {
+			D = D + 2 * dx;
+		}
+	}
+}
+
+void Image::PutPixel32(int x, int y, Uint32 color)
+{
+	if (SDL_MUSTLOCK(surface))
+		SDL_LockSurface(surface);
+	PutPixel32_nolock(x, y, color);
+	if (SDL_MUSTLOCK(surface))
+		SDL_UnlockSurface(surface);
+}
+
+void Image::PutPixel32_nolock(int x, int y, Uint32 color)
+{
+	Uint8* pixel = (Uint8*)surface->pixels;
+	pixel += (y * surface->pitch) + x * surface ->format->BytesPerPixel;
+	*((Uint32*)pixel) = color;
+}
+
+Uint32 Image::GetColor(int x, int y) {
+	return *(Uint32*)((Uint8*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
+}
+
+void Image::textureFromSurface() {
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	GLenum format = GL_RGBA;
+	if (surface->format->BytesPerPixel == 3) {
+		format = GL_RGB;
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	texture = textureID;
+}
+
+void Image::Load(char* s) {
+	surface = IMG_Load(s);
+}
+
+void Image::loadImage(char* s) {
+	SDL_FreeSurface(surface);
+	Load(s);
+	textureFromSurface();
 }

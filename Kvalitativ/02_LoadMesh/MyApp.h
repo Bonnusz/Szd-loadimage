@@ -29,44 +29,46 @@ public:
 	GLuint getTexture() { return texture; }
 	void textureFromSurface();
 
-	void Load(char* s);
+	void drawImage();
+	void editableDrawImage();
+
+	//void Load(char* s);
 	//void loadImage(char* s);
 
-private:
+protected:
 	SDL_Surface* surface;
 	GLuint texture;
+
 };
 
-class ImageModify {
-public:
-	static void plotLine(int x0, int y0, int x1, int y1, Image im);
-	static void PutPixel32(int x, int y, Uint32 color, Image im);
-	static Uint32 GetColor(int x, int y, Image im);
+class Image0 : public Image {
 
-private:
-	static void plotLineLow(int x0, int y0, int x1, int y1, Image im);
-	static void plotLineHigh(int x0, int y0, int x1, int y1, Image im);
-	static void PutPixel32_nolock(int x, int y, Uint32 color, Image im);
 };
 
-class RegularModify {
+class Image0FromFile : public Image0 {
 public:
-	static void CursorPos(float offset);
-	static Uint8 greyscale(Uint32 pixel, SDL_PixelFormat* format);
-	//static void Resize(int, int);
+	void Load(char* s);
 };
 
-class Zoom { //magnify
+class Image1 : public Image {
 public:
-	Zoom(void);
-	void setZoom(char str1verified[]);
+	Image1(void);
+	Image1(Image im);
 
-	void safeZoomHelpingMethod(Image im1);
-	
-	void ZoomMethod(Image im1);
+protected:
+	Image imIn;
+};
 
-private: //name it correctly!
-	Image imZoom;
+class Image1Magnify : public Image1 {
+public:
+	Image1Magnify(void);
+	Image1Magnify(Image im);
+
+	void editableDrawImage();
+
+protected:
+	void MagnifyMethod();
+
 	int zoomW;
 	int zoomH;
 	float zoomTimes;
@@ -75,33 +77,72 @@ private: //name it correctly!
 	bool smallChange;
 	int bigW;
 	int bigH;
+	bool upd;
+};
+
+class Image2 : public Image {
+public:
+	Image2(void);
+	Image2(Image im1,Image im2);
+
+protected:
+	Image imIn1, imIn2;
+};
+
+class Image2SSIM : public Image2 {
+public:
+	Image2SSIM(void);
+	Image2SSIM(Image im1, Image im2);
+
+	void SSIMSurface();
+	void editableDrawImage();
+
+protected:
+	struct colorsStruckt { Uint8 grey1, grey2, red1, red2, green1, green2, blue1, blue2, alpha1, alpha2; };
+	float SSIMmethod(std::vector<std::vector<colorsStruckt>> window, int currCol);
+
+	int ssimColor;
+	int ssimSize;
+	float C1 = 0.01f, C2 = 0.03f; //const?
+	float ssimOsszeg;
 
 };
 
-class SSIM {
+class Image2Merge : public Image2 {
 public:
-	SSIM(void);
-	void setSSIM(Image im1, Image im2, char str1verified[]);
+	Image2Merge(void);
+	Image2Merge(Image im1, Image im2);
 
-	void Window2AfterColumn(Image im1, Image im2, bool updSSIM, bool currentError[], char str1verified[]);
+	void plotLineMerge(int x, int y);
+	void editableDrawImage();
 
-	void plotLineSSIM(int x, int y, float slope, Image im1);
-	
-	SDL_Surface* SSIMSurface(Image img1, Image img2, int windowSize);
-	struct colorsStruckt { Uint8 grey1, grey2, red1, red2, green1, green2, blue1, blue2, alpha1, alpha2; };
-	float SSIMmethod(std::vector<std::vector<colorsStruckt>> window, int size, int currCol);
+protected:
+	float slope;
+	bool upd;
+};
 
-	void saveSSIM(char outstr2[]);
+class ImageModify {
+public:
+	static void plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur);
+	static void PutPixel32(int x, int y, Uint32 color, SDL_Surface* sur);
+	static Uint32 GetColor(int x, int y, SDL_Surface* sur);
 
 private:
-	Image imSSIM1;
-	Image imSSIM2;
-	int ssimColor;
-	float slope;
-	int ssimSize;
-	const float C1 = 0.01f, C2 = 0.03f;
-	float ssimOsszeg;
+	static void plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur);
+	static void plotLineHigh(int x0, int y0, int x1, int y1, SDL_Surface* sur);
+	static void PutPixel32_nolock(int x, int y, Uint32 color, SDL_Surface* sur);
 };
+
+class RegularModify {
+public:
+	static void CursorPos(float offset);
+	static Uint8 greyscale(Uint32 pixel, SDL_PixelFormat* format);
+
+	//add the save here
+
+	//static void Resize(int, int);
+};
+
 
 class CMyApp
 {
@@ -119,7 +160,7 @@ public:
 	void Resize(int, int);
 
 	//static??
-	bool Verify(char strIn[],char strInv[],int noErr);
+	bool Verify(char* filePath, char* filePathv, int noErr);
 
 	//potencialremove
 	void KeyboardDown(SDL_KeyboardEvent&);
@@ -132,17 +173,8 @@ public:
 	*/
 
 	std::vector<Image> imageVec;
-
-	//zoom
-	void setZoom(char str1verified[]);
-	void ZoomMethod(Image im1); //!!!!!!!!!!
-
-	//ssim
-	//void setSSIM(Image im1, Image im2, char str1verified[]);
-	void plotLineSSIM(int x, int y, float slope, Image im1);
-	SDL_Surface* SSIMSurface(Image img1, Image img2, int windowSize);
-	struct colorsStruckt { Uint8 grey1, grey2, red1, red2, green1, green2, blue1, blue2, alpha1, alpha2; };
-	float SSIMmethod(std::vector<std::vector<colorsStruckt>> window, int size, int currCol);
+	std::vector<bool> boolVec; //not needed
+	std::vector<int> selectedImageVec;
 
 protected:
 
@@ -188,66 +220,30 @@ protected:
 	glm::vec3 m_forward = glm::vec3(m_at - m_eye);
 	float t = 1;
 
-	enum Windows {
-		WINDOW1,
-		WINDOW2
-	};
-
 	enum ImageEnum {
-		SEMMIenum,
-		ZOOMenum,
-		SSIMenum,
-		SAVEenum
+		SEMMIENUM,
+
+		LOADENUM,
+		
+		MAGNIFYENUM,
+		SAVEENUM,
+
+		SSIMENUM,
+		MERGEENUM
 	};
 	ImageEnum currentImageEnum;
 
-	Image im1;
-	Image im2;
-
 	ImGuiWindowFlags window_flags;
-	Windows currentWindow;
+
 	bool currentError[5];
 
 	char stradd[128];
 	char straddverified[128];
-	int selected1, selected2;
-
-	char str1[128];
-	char str1verified[128];
-	char str2[128];
-	char str2verified[128];
 	char outstr[128];
-	char outstr1[128];
-	char outstr2[128];
 	
-	bool upd;
-	bool updSSIM;
-
-	Zoom zoomClass;
-	SSIM ssimClass;
-
-	
-	//zoom
-	Image imZoom;
-	int zoomW;
-	int zoomH;
-	float zoomTimes;
-	int smallW;
-	int smallH;
-	bool smallChange;
-	int bigW;
-	int bigH;
-
-	//ssim
-	Image imSSIM1;
-	Image imSSIM2;
-	int ssimColor;
-	float slope;
-	int ssimSize;
-	const float C1 = 0.01f, C2 = 0.03f;
-	float ssimOsszeg;
-
-	bool ssimSelect;
+	Image1Magnify im1mag;
+	Image2SSIM im2ssim;
+	Image2Merge im2merge;
 };
 
 

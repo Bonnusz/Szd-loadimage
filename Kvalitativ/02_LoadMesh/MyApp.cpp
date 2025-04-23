@@ -12,31 +12,48 @@
 #include <imgui/imgui.h>
 #include "stb_image.h"
 
-float f(float t) {
-	//return (t - 1) * (t - 1);
-	return t * t;
+static void ShowHelpMarker(const char* desc) //!!!! utolsó pillanati metódusok, el lesznek majd osztályokba rakva
+{
+	ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(450.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
 }
 
-float df(float t) {
-	return 2 * t;
+static Uint32 heatmapColor(float value) {
+	
+	int r, g, b;
+
+	if (value < 0.0f) {
+		// red (255,0,0) -> yellow (255,255,0)
+		r = 255;
+		g = static_cast<int>(255 * (value + 1.0f) / 1.0f);
+		b = 0;
+	}
+	else {
+		// yellow (255,255,0) -> blue (0,0,255)
+		r = g = static_cast<int>(255 * (1.0f - (value / 1.0f)));
+		//g = static_cast<int>(255 * (1.0f - (value / 1.0f)));
+		b = static_cast<int>(255 * (value / 1.0f));
+	}
+
+	return (r << 24) + (g << 16) + (b << 8);
 }
 
 CMyApp::CMyApp(void)
 {
-	m_vaoID = 0;
-	m_vboID = 0;
-	m_programID = 0;
-	m_waterTextureID = 0;
-	m_samplerID = 0;
-	m_mesh = 0;
-
 	window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_HorizontalScrollbar;
 
 	for (int i = 0;i< sizeof(currentError);i++) {
 		currentError[i] = false;
 	}
 
-	//multpics !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	strcpy(stradd, "C:/Users/User/Pictures/ac2.jpg");
 	strcpy(straddverified, stradd);
 	Verify(stradd, straddverified, 0);
@@ -53,212 +70,62 @@ CMyApp::~CMyApp(void)
 bool CMyApp::Init()
 {
 	// törlési szín legyen kékes
-	glClearColor(0.125f, 0.25f, 0.5f, 1.0f);
+	glClearColor(0.5f, 0.5f, 1.0f, 1.0f);
 
 	glEnable(GL_CULL_FACE); // kapcsoljuk be a hatrafele nezo lapok eldobasat
 	glEnable(GL_DEPTH_TEST); // mélységi teszt bekapcsolása (takarás)
 	glCullFace(GL_BACK); // GL_BACK: a kamerától "elfelé" nézõ lapok, GL_FRONT: a kamera felé nézõ lapok
 
-	//
-	// geometria letrehozasa
-	//
-
-	Vertex vert[] =
-	{
-		//          x,  y, z               nx,ny,nz			 s, t
-		{glm::vec3(-10, 0, -10), glm::vec3(0, 1, 0), glm::vec2(0, 0)},
-		{glm::vec3(-10, 0,  10), glm::vec3(0, 1, 0), glm::vec2(0, 1)},
-		{glm::vec3(10, 0, -10), glm::vec3(0, 1, 0), glm::vec2(1, 0)},
-		{glm::vec3(10, 0,  10), glm::vec3(0, 1, 0), glm::vec2(1, 1)},
-	};
-
-	// indexpuffer adatai
-	GLushort indices[] =
-	{
-		// 1. háromszög
-		0,1,2,
-		// 2. háromszög
-		2,1,3,
-	};
-
-	// 1 db VAO foglalasa
-	glGenVertexArrays(1, &m_vaoID);
-	// a frissen generált VAO beallitasa aktívnak
-	glBindVertexArray(m_vaoID);
-
-	// hozzunk létre egy új VBO erõforrás nevet
-	glGenBuffers(1, &m_vboID);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vboID); // tegyük "aktívvá" a létrehozott VBO-t
-	// töltsük fel adatokkal az aktív VBO-t
-	glBufferData(GL_ARRAY_BUFFER,	// az aktív VBO-ba töltsünk adatokat
-		sizeof(vert),		// ennyi bájt nagyságban
-		vert,	// errõl a rendszermemóriabeli címrõl olvasva
-		GL_STATIC_DRAW);	// úgy, hogy a VBO-nkba nem tervezünk ezután írni és minden kirajzoláskor felhasnzáljuk a benne lévõ adatokat
-
-
-	// VAO-ban jegyezzük fel, hogy a VBO-ban az elsõ 3 float sizeof(Vertex)-enként lesz az elsõ attribútum (pozíció)
-	glEnableVertexAttribArray(0); // ez lesz majd a pozíció
-	glVertexAttribPointer(
-		0,				// a VB-ben található adatok közül a 0. "indexû" attribútumait állítjuk be
-		3,				// komponens szam
-		GL_FLOAT,		// adatok tipusa
-		GL_FALSE,		// normalizalt legyen-e
-		sizeof(Vertex),	// stride (0=egymas utan)
-		0				// a 0. indexû attribútum hol kezdõdik a sizeof(Vertex)-nyi területen belül
-	);
-
-	// a második attribútumhoz pedig a VBO-ban sizeof(Vertex) ugrás után sizeof(glm::vec3)-nyit menve újabb 3 float adatot találunk (szín)
-	glEnableVertexAttribArray(1); // ez lesz majd a szín
-	glVertexAttribPointer(
-		1,
-		3,
-		GL_FLOAT,
-		GL_FALSE,
-		sizeof(Vertex),
-		(void*)(sizeof(glm::vec3)));
-
-	// textúrakoordináták bekapcsolása a 2-es azonosítójú attribútom csatornán
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(
-		2,
-		2,
-		GL_FLOAT,
-		GL_FALSE,
-		sizeof(Vertex),
-		(void*)(2 * sizeof(glm::vec3)));
-
-	// index puffer létrehozása
-	glGenBuffers(1, &m_ibID);
-	// a VAO észreveszi, hogy bind-olunk egy index puffert és feljegyzi, hogy melyik volt ez!
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibID);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-	glBindVertexArray(0); // feltöltüttük a VAO-t, kapcsoljuk le
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // feltöltöttük a VBO-t is, ezt is vegyük le
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // feltöltöttük a VBO-t is, ezt is vegyük le
-
-	//
-	// shaderek betöltése
-	//
-	GLuint vs_ID = loadShader(GL_VERTEX_SHADER, "myVert.vert");
-	GLuint fs_ID = loadShader(GL_FRAGMENT_SHADER, "myFrag.frag");
-
-	// a shadereket tároló program létrehozása
-	m_programID = glCreateProgram();
-
-	// adjuk hozzá a programhoz a shadereket
-	glAttachShader(m_programID, vs_ID);
-	glAttachShader(m_programID, fs_ID);
-
-	// VAO-beli attribútumok hozzárendelése a shader változókhoz
-	// FONTOS: linkelés elõtt kell ezt megtenni!
-	glBindAttribLocation(m_programID,	// shader azonosítója, amibõl egy változóhoz szeretnénk hozzárendelést csinálni
-		0,				// a VAO-beli azonosító index
-		"vs_in_pos");	// a shader-beli változónév
-	glBindAttribLocation(m_programID, 1, "vs_in_norm");
-	glBindAttribLocation(m_programID, 2, "vs_in_tex0");
-
-	// illesszük össze a shadereket (kimenõ-bemenõ változók összerendelése stb.)
-	glLinkProgram(m_programID);
-
-	// linkeles ellenorzese
-	GLint infoLogLength = 0, result = 0;
-
-	glGetProgramiv(m_programID, GL_LINK_STATUS, &result);
-	glGetProgramiv(m_programID, GL_INFO_LOG_LENGTH, &infoLogLength);
-	if (GL_FALSE == result)
-	{
-		std::vector<char> ProgramErrorMessage(infoLogLength);
-		glGetProgramInfoLog(m_programID, infoLogLength, NULL, &ProgramErrorMessage[0]);
-		fprintf(stdout, "%s\n", &ProgramErrorMessage[0]);
-
-		char* aSzoveg = new char[ProgramErrorMessage.size()];
-		memcpy(aSzoveg, &ProgramErrorMessage[0], ProgramErrorMessage.size());
-
-		std::cout << "[app.Init()] Sáder Huba panasza: " << aSzoveg << std::endl;
-
-		delete aSzoveg;
-	}
-
-	// mar nincs ezekre szukseg
-	glDeleteShader(vs_ID);
-	glDeleteShader(fs_ID);
-
+	
 	//
 	// egyéb inicializálás
 	//
-
-	// vetítési mátrix létrehozása
-	m_matProj = glm::perspective(45.0f, 640 / 480.0f, 1.0f, 1000.0f);
-
-	// shader-beli transzformációs mátrixok címének lekérdezése
-	m_loc_mvp = glGetUniformLocation(m_programID, "MVP");
-
-	m_loc_world = glGetUniformLocation(m_programID, "world");
-	m_loc_worldIT = glGetUniformLocation(m_programID, "WorldIT");
-
-	m_loc_texture = glGetUniformLocation(m_programID, "texture");
-	m_loc_eye = glGetUniformLocation(m_programID, "eye_Pos");
-
-	//
-	// egyéb erõforrások betöltése
-	//
-
-	// textúra betöltése
-	m_waterTextureID = TextureFromFile("texture.bmp");
-	//m_waterTextureID = TextureFromFile("Large_cloud_over_Mexican_land.jpg");
-	m_samplerID = genSampler();
-
-	// mesh betoltese
-	m_mesh = ObjParser::parse("Suzanne.obj");
-	m_mesh->initBuffers();
 
 	return true;
 }
 
 void CMyApp::Clean()
 {
-	delete m_mesh;
-	glDeleteTextures(1, &m_waterTextureID);
 
-	glDeleteSamplers(1, &m_samplerID);
-
-	glDeleteBuffers(1, &m_vboID);
-	glDeleteVertexArrays(1, &m_vaoID);
-
-	glDeleteProgram(m_programID);
 }
 
 void CMyApp::Update()
 {
-	// nézeti transzformáció beállítása
-	m_matView = glm::lookAt(m_eye,	// honnan nézzük a színteret
-		m_at,	// a színtér melyik pontját nézzük
-		m_up);	// felfelé mutató irány a világban
+
 }
 
 void CMyApp::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glUniform3f(glGetUniformLocation(m_programID, "eye_pos"), m_eye.x, m_eye.y, m_eye.z);
-
 	ImGuiIO io = ImGui::GetIO();
+
 	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
 	ImGui::SetNextWindowPos(ImVec2(0,0));
 	ImGui::GetStyle().WindowRounding = 0.0f;
 
 	ImGui::Begin("Kvalitativ osszehasonlitas", 0, window_flags); 
+
+		/*
+		ImFont* arial = io.Fonts->AddFontFromFileTTF("ARIAL.ttf", 13.0f);
+		io.Fonts->Build();
+
+		ImGui::PushFont(arial);
+		ImGui::Text("Teszt");
+		ImGui::PopFont();
+		*/
+
 	ImFont* imFo = ImGui::GetFont();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 
 	ImGui::NewLine();
-	imFo->Scale = 2.f;
-	ImGui::PushFont(imFo);
+	imFo->Scale = 2.f;	ImGui::PushFont(imFo);
+	//RegularModify::CursorPos(io.DisplaySize.x / 2);
+	//ImGui::Text("Test");
+	RegularModify::CursorPos(std::max((int)(io.DisplaySize.x / 2 - 240),10));
 	ImGui::Text("Kepek kvalitativ osszehasonlitasa");
-	imFo->Scale = 1.f;
-	ImGui::PopFont();
-	ImGui::NewLine();
+	imFo->Scale = 1.f;	ImGui::PopFont();
+	ImGui::NewLine(); ImGui::NewLine();
 
 
 	int maxHeightVecIndex = 0;
@@ -269,15 +136,20 @@ void CMyApp::Render()
 	}
 
 	if (currentImageEnum == SEMMIENUM || currentImageEnum == LOADENUM)	{
+		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 		ImGui::Text("Kepek:");
+		imFo->Scale = 1.f;	ImGui::PopFont();
+		ShowHelpMarker("A betoltott kepek jelennek meg itt. Kattints rajuk, hogy kivalaszd oket.");
+		ImGui::NewLine();
+
 		if(imageVec.size()>0) {
 
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
 			
-			ImGui::BeginChild("scrolling", ImVec2(0, std::min(370 + 30 , imageVec[maxHeightVecIndex].getSurface()->h +30)), false, ImGuiWindowFlags_HorizontalScrollbar); 
+			ImGui::BeginChild("scrolling", ImVec2(0, 320), false , ImGuiWindowFlags_HorizontalScrollbar);
 			for (int i = 0; i < imageVec.size(); i++) {
-				imageVec[i].drawImage();
+				imageVec[i].drawImage(300, boolVec[i]);
 				if (ImGui::IsItemClicked() && currentImageEnum == SEMMIENUM)
 				{
 					if (boolVec[i] == false) {
@@ -291,41 +163,36 @@ void CMyApp::Render()
 				}
 				ImGui::SameLine();
 
-				if(currentImageEnum == SEMMIENUM){
-					bool segedBool = boolVec[i];
-					ImGui::Checkbox( ("##" + std::to_string(i)).c_str(), &segedBool);
-					if (boolVec[i] != segedBool) {
-
-						if (boolVec[i] == false) {
-							selectedImageVec.push_back(i);
-						}
-						else {
-							selectedImageVec.erase(std::remove(selectedImageVec.begin(), selectedImageVec.end(), i), selectedImageVec.end());
-						}
-					}
-					boolVec[i] = segedBool;
-					ImGui::SameLine();
-				}
 			}
 			ImGui::EndChild();
 
 			ImGui::PopStyleVar(2);
 		}
 		else {
-			ImGui::Text("Ures");
+			ImGui::Text("Nincsen betoltott kep.");
+			ImGui::NewLine();
 		}
-		ImGui::NewLine();
+		if (selectedImageVec.size() == 0) {
+			ImGui::NewLine(); ImGui::NewLine();
+		}
+		
+		
 	}
 
 	if(currentImageEnum == SEMMIENUM){
 		for (int i = 0; i < selectedImageVec.size(); i++) { //edit !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			imageVec[selectedImageVec[i]].drawImage();
+			imageVec[selectedImageVec[i]].editableDrawImage();
 			ImGui::SameLine();
 		}
-		ImGui::NewLine();
+		if (selectedImageVec.size() > 0) {
+			ImGui::NewLine(); ImGui::NewLine(); ImGui::NewLine(); ImGui::NewLine();
+		}
 
-
+		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 		ImGui::Text("Muveletek:");
+		imFo->Scale = 1.f;	ImGui::PopFont();
+		ShowHelpMarker("A kivalasztott kepekkel vegrehajthato muveletek.");
+		ImGui::NewLine();
 
 		switch (selectedImageVec.size())
 		{
@@ -387,11 +254,15 @@ void CMyApp::Render()
 				ImGui::PopFont();
 			}
 			else {
+				ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 				ImGui::Text("Nincsen muvelet kulonbozo meretu kepekre");
+				ImGui::PopStyleColor();
 			}
 			break;
 		default:
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Nincsen muvelet ennyi darab kepre");
+			ImGui::PopStyleColor();
 			break;
 		}
 	}
@@ -401,6 +272,10 @@ void CMyApp::Render()
 
 	case CMyApp::LOADENUM:
 
+		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
+		ImGui::Text("Kep betoltese");
+		imFo->Scale = 1.f;	ImGui::PopFont();
+		ImGui::NewLine();
 		ImGui::Text("A betoltendo kep eleresi utvonala:");
 		ImGui::PushItemWidth(300);
 		ImGui::InputText("##StrAdd", stradd, IM_ARRAYSIZE(stradd));
@@ -413,6 +288,10 @@ void CMyApp::Render()
 		}
 		else ImGui::NewLine();
 
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 1.0f, 0.7f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 1.0f, 0.7f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 1.0f, 0.7f, 0.5f));
+
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Betoltes##stradd", ImVec2(150, 50))) {
@@ -422,17 +301,22 @@ void CMyApp::Render()
 				imadd.textureFromSurface();
 				imageVec.push_back(imadd);
 				boolVec.push_back(false);
-
-				ImGui::OpenPopup("Betoltes##Pop");
 			}
 		}
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
+
+		ImGui::PopStyleColor(3);
+
 		break;
 
 	case CMyApp::MAGNIFYENUM:
 
 		im1mag.editableDrawImage();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 1.0f, 0.7f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 1.0f, 0.7f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 1.0f, 0.7f, 0.5f));
 
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
@@ -445,13 +329,22 @@ void CMyApp::Render()
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
 
+		ImGui::PopStyleColor(3);
+
 		break;
 
 	case CMyApp::SAVEENUM:
 
-		ImGui::Image((void*)(intptr_t)imageVec[selectedImageVec[0]].getTexture(), ImVec2(imageVec[selectedImageVec[0]].getSurface()->w, imageVec[selectedImageVec[0]].getSurface()->h));
+		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
+		ImGui::Text("Kep mentese");
+		imFo->Scale = 1.f;	ImGui::PopFont();
+		ImGui::NewLine();
 
-		ImGui::PushItemWidth(300);
+		ImGui::Image((void*)(intptr_t)imageVec[selectedImageVec[0]].getTexture(), ImVec2(imageVec[selectedImageVec[0]].getSurface()->w, imageVec[selectedImageVec[0]].getSurface()->h));
+		ImGui::NewLine();
+
+		ImGui::Text("A kep mentesi utvonala:");
+		ImGui::PushItemWidth(std::max(imageVec[selectedImageVec[0]].getSurface()->w, 300));
 		ImGui::InputText("##SavePath", outstr, IM_ARRAYSIZE(outstr));
 		ImGui::PopItemWidth();
 		if (currentError[2]) {
@@ -459,6 +352,12 @@ void CMyApp::Render()
 			ImGui::Text("Hibas mentesi utvonal");
 			ImGui::PopStyleColor();
 		}
+		ImGui::NewLine();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 1.0f, 0.7f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 1.0f, 0.7f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 1.0f, 0.7f, 0.5f));
+
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Mentes", ImVec2(150, 50))) {
@@ -477,11 +376,17 @@ void CMyApp::Render()
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
 
+		ImGui::PopStyleColor(3);
+
 		break;
 
 	case CMyApp::SSIMENUM:
 
 		im2ssim.editableDrawImage();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 1.0f, 0.7f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 1.0f, 0.7f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 1.0f, 0.7f, 0.5f));
 
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
@@ -494,11 +399,17 @@ void CMyApp::Render()
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
 
+		ImGui::PopStyleColor(3);
+
 		break;
 
 	case CMyApp::MERGEENUM:
 
 		im2merge.editableDrawImage();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 1.0f, 0.7f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 1.0f, 0.7f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 1.0f, 0.7f, 0.5f));
 
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
@@ -510,6 +421,8 @@ void CMyApp::Render()
 		}
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
+
+		ImGui::PopStyleColor(3);
 		
 		break;
 
@@ -517,20 +430,25 @@ void CMyApp::Render()
 		break;
 	}
 
-	/*
-	if (0 <= selected && selected1 < imageVec.size()) {
-		if(currentImageEnum == SEMMIenum) ImGui::Image((void*)(intptr_t)imageVec[selected1].getTexture(), ImVec2(imageVec[selected1].getSurface()->w, imageVec[selected1].getSurface()->h));
-	}
-	else {
-		ImGui::Text("*Kattints ra az egyik kepre, hogy kivalaszd azt!");
-	}*/
 
 	if (currentImageEnum != SEMMIENUM) {
+
+		ImGui::SameLine();
+		if (currentImageEnum != LOADENUM) {
+			RegularModify::CursorPos(std::max(170, imageVec[selectedImageVec[0]].getSurface()->w-150));
+		}
+		else {
+			RegularModify::CursorPos(170);
+		}
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.8f, 0.8f, 0.3f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.8f, 0.8f, 0.45f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.8f, 0.8f, 0.5f));
 		if (ImGui::Button("Vissza", ImVec2(150, 50))) {
 			currentImageEnum = SEMMIENUM;
 		}
+		ImGui::PopStyleColor(3);
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
 	}
@@ -578,38 +496,6 @@ bool CMyApp::Verify(char* filePath , char* filePathv, int noErr) {
 	return true;
 }
 
-glm::vec3 CMyApp::toDesc(float fi, float theta) {
-	return glm::vec3(sin(fi) * cos(theta), cos(fi), -sin(fi) * sin(theta));
-}
-
-void CMyApp::KeyboardDown(SDL_KeyboardEvent& key)
-{
-}
-
-void CMyApp::KeyboardUp(SDL_KeyboardEvent& key)
-{
-}
-
-void CMyApp::MouseMove(SDL_MouseMotionEvent& mouse)
-{
-}
-
-void CMyApp::MouseDown(SDL_MouseButtonEvent& mouse)
-{
-}
-
-void CMyApp::MouseUp(SDL_MouseButtonEvent& mouse)
-{
-}
-
-void CMyApp::MouseWheel(SDL_MouseWheelEvent& wheel)
-{
-}
-
-
-/* Image::Image(void){}
-   Image::~Image(void){} */
-
 void Image::textureFromSurface() {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
@@ -628,8 +514,11 @@ void Image::textureFromSurface() {
 	texture = textureID;
 }
 
-void Image::drawImage() {
-	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w,surface->h) );
+void Image::drawImage(int size, bool selected) {
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
+	ImGui::ImageButton((void*)(intptr_t)texture, ImVec2(size, size), ImVec2(0, 0), ImVec2( surface->w > size ? surface->w/size : size/surface->w , surface->h > size ? surface->h / size : size / surface->h), selected ? 5 : 0, ImColor(0, 0, 0, 255));
+	ImGui::PopStyleColor(2);
 }
 
 void Image::editableDrawImage() {
@@ -684,11 +573,15 @@ Image1Magnify::Image1Magnify(Image im) : Image1(im) {
 }
 
 void Image1Magnify::editableDrawImage() {
-	ImGui::Text("Magnify");
 
 	ImFont* imFo = ImGui::GetFont();
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
+
+	imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
+	ImGui::Text("Kep nagyitasa");
+	imFo->Scale = 1.f;	ImGui::PopFont();
+	ImGui::NewLine();
 
 	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
 	if (ImGui::IsItemHovered())
@@ -741,18 +634,48 @@ void Image1Magnify::editableDrawImage() {
 	imFo->Scale = 1.3f;
 	ImGui::PushFont(imFo);
 	RegularModify::CursorPos(1 * fmax(surface->w, 300) / 4 - 70);
+
+	if (smallChange) {
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 1.f, 0.2f, 0.4f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 1.f, 0.2f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 1.f, 0.2f, 0.7f));
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 0.4f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.75f));
+	}
 	if (ImGui::Button("KisTeglalap", ImVec2(140, 40))) {
-		upd = false;
 		smallChange = true;
 	}
-	ImGui::SameLine();
-	RegularModify::CursorPos(3 * fmax(surface->w, 300) / 4 - 70);
-	if (ImGui::Button("Nagyteglalap", ImVec2(140, 40))) {
-		upd = false;
-		smallChange = false;
-	}
+	ImGui::PopStyleColor(3);
 	imFo->Scale = 1.f;
 	ImGui::PopFont();
+	ShowHelpMarker("Ezt kivalasztva a nagyitando terulet helyet tudod majd mozgatni.");
+	
+	ImGui::SameLine();
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+	RegularModify::CursorPos(3 * fmax(surface->w, 300) / 4 - 70);
+	if (!smallChange) {
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 1.f, 0.2f, 0.4f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 1.f, 0.2f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 1.f, 0.2f, 0.7f));
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 0.4f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.75f));
+	}
+	if (ImGui::Button("NagyTeglalap", ImVec2(140, 40))) {
+		smallChange = false;
+	}
+	ImGui::PopStyleColor(3);
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
+
+	ShowHelpMarker("Ezt kivalasztva a felnagyitott terulet kivetitesenek a helyet tudod majd mozgatni.");
+
 
 	ImGui::NewLine();
 
@@ -786,24 +709,24 @@ void Image1Magnify::MagnifyMethod() {
 
 	for (int i = 0; i < surface->w; i++) {
 		for (int j = 0; j < surface->h; j++) {
-			ImageModify::PutPixel32(i, j, ImageModify::GetColor(i, j, imIn.getSurface()), surface);
+			SurfaceModify::PutPixel32(i, j, SurfaceModify::GetColor(i, j, imIn.getSurface()), surface);
 		}
 	}
 
 	for (int i = zoomW * zoomTimes; i > 0; i--) {
 		for (int j = zoomH * zoomTimes; j > 0; j--) {
 			if (i == 1 || i == std::floor(zoomW * zoomTimes) || j == 1 || j == std::floor(zoomH * zoomTimes)) {
-				ImageModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, red, surface);
+				SurfaceModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, red, surface);
 			}
 			else {
-				ImageModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, ImageModify::GetColor(int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH), surface), surface);
+				SurfaceModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, SurfaceModify::GetColor(int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH), surface), surface);
 			}
 		}
 	}
 	for (int i = 0 + smallW; i < zoomW + smallW; i++) {
 		for (int j = 0 + smallH; j < zoomH + smallH; j++) {
 			if (i == 0 + smallW || j == 0 + smallH || i == zoomW + smallW - 1 || j == zoomH + smallH - 1) {
-				ImageModify::PutPixel32(i, j, red, surface);
+				SurfaceModify::PutPixel32(i, j, red, surface);
 			}
 		}
 	}
@@ -825,9 +748,9 @@ void Image1Magnify::MagnifyMethod() {
 	}
 
 	int x0 = small1.x, x1 = big1.x, y0 = small1.y, y1 = big1.y;
-	ImageModify::plotLine(x0, y0, x1, y1, surface);	
+	SurfaceModify::plotLine(x0, y0, x1, y1, surface);	
 	x0 = small2.x, x1 = big2.x, y0 = small2.y, y1 = big2.y;
-	ImageModify::plotLine(x0, y0, x1, y1, surface);
+	SurfaceModify::plotLine(x0, y0, x1, y1, surface);
 
 	textureFromSurface();
 }
@@ -884,99 +807,77 @@ Image2SSIM::Image2SSIM(Image im1, Image im2) : Image2(im1,im2) {
 }
 
 void Image2SSIM::editableDrawImage() {
-	ImGui::Text("SSIM");
 
 	ImFont* imFo = ImGui::GetFont();
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 
-	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
-
-		ImGui::Text("Osszesitett SSIM ertek: %f", ssimOsszeg);
-
-		ImGui::Text("Az atmenet meredeksege:");
-		ImGui::SameLine();
-		RegularModify::CursorPos(200);
-		ImGui::PushItemWidth(200);
-		ImGui::PopItemWidth();
-
-		ImGui::Text("Az SSIM szine: "); ImGui::SameLine();
-		ImGui::RadioButton("Fekete-Feher", &ssimColor, 0); ImGui::SameLine();
-		ImGui::RadioButton("Kek", &ssimColor, 1); ImGui::SameLine();
-		ImGui::RadioButton("Zold", &ssimColor, 2);  ImGui::SameLine();
-		ImGui::RadioButton("Piros", &ssimColor, 3);  ImGui::SameLine();
-		ImGui::RadioButton("Osszes szin", &ssimColor, 4);
-
-		ImGui::Text("Az SSIM szeletek merete:");
-		ImGui::SameLine();
-		RegularModify::CursorPos(200);
-		ImGui::PushItemWidth(100);
-		ImGui::InputInt("##Size", &ssimSize, 0);
-		ImGui::PopItemWidth();
-		if (ssimSize < 1) { //lookinto
-			ssimSize = 1;
-		}
-		if (ssimSize > fmin(surface->w / 2, surface->h / 2)) {
-			ssimSize = fmin(surface->w / 2, surface->h / 2);
-		}
-
-		imFo->Scale = 1.3f;
-		ImGui::PushFont(imFo);
-		if (ImGui::Button("Ujrageneralas", ImVec2(150, 50))) {
-
-			SSIMSurface();
-		}
-		imFo->Scale = 1.f;
-		ImGui::PopFont();
-	
-
+	imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
+	ImGui::Text("Ket kep SSIM-e");
+	imFo->Scale = 1.f;	ImGui::PopFont();
 	ImGui::NewLine();
 
+	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
+	ImGui::NewLine();
+
+	ImGui::Text("Osszesitett SSIM ertek: %f", ssimOsszeg);
+	ShowHelpMarker("A kepeken vegrehajtott sSIM algoritmusok eredmenyenek az atlaga.");
+
+	ImGui::Text("Az SSIM szine: "); ImGui::SameLine();
+	ImGui::RadioButton("Fekete-Feher", &ssimColor, 0); ImGui::SameLine();
+	ImGui::RadioButton("Kek", &ssimColor, 1); ImGui::SameLine();
+	ImGui::RadioButton("Zold", &ssimColor, 2);  ImGui::SameLine();
+	ImGui::RadioButton("Piros", &ssimColor, 3);  ImGui::SameLine();
+	ImGui::RadioButton("Osszes szin", &ssimColor, 4);	ImGui::SameLine();
+	ImGui::RadioButton("Heatmap", &ssimColor, 5);
+	ShowHelpMarker("Itt tudod kivalasztani az SSIM kep szinet/stilusat.");
+
+	ImGui::Text("Az SSIM szeletek merete:");
+	ImGui::SameLine();
+	RegularModify::CursorPos(200);
+	ImGui::PushItemWidth(100);
+	ImGui::InputInt("##Size", &ssimSize, 0);
+	ShowHelpMarker("Az SSIM algoritmus hanyszor hanyas szeletekben szamoljon.");
+
+	ImGui::NewLine();
+	ImGui::PopItemWidth();
+	if (ssimSize < 1) { //lookinto
+		ssimSize = 1;
+	}
+	if (ssimSize > fmin(surface->w / 2, surface->h / 2)) {
+		ssimSize = fmin(surface->w / 2, surface->h / 2);
+	}
+
+	RegularModify::CursorPos((surface->w / 2) - (150/2) );
+	imFo->Scale = 1.3f;
+	ImGui::PushFont(imFo);
+	if (ImGui::Button("Ujrageneralas", ImVec2(150, 50))) {
+
+		SSIMSurface();
+	}
+	imFo->Scale = 1.f;
+	ImGui::PopFont();
 	
 
-	/*
-		io = ImGui::GetIO();
-		pos = ImGui::GetCursorScreenPos();
-		ImGui::Image((void*)(intptr_t)imSSIM2.getTexture(), ImVec2(imSSIM2.getSurface()->w, imSSIM2.getSurface()->h));
-		if (ImGui::IsItemHovered())
-		{
-			if (updSSIM) {
-				plotLineSSIM(io.MousePos.x - pos.x, io.MousePos.y - pos.y, slope, imageVec[selected1]);
-				imSSIM2.textureFromSurface();
-			}
-		}
-		if (ImGui::IsItemClicked()) {
-			updSSIM = !updSSIM;
-		}
+	ImGui::NewLine(); ImGui::NewLine();
 
-		ImGui::Text("Osszesitett SSIM ertek: %f", ssimOsszeg);
-
-		imFo->Scale = 1.3f;
-		ImGui::PushFont(imFo);
-		if (ImGui::Button("Betoltes##ssim", ImVec2(150, 50))) {
-			imageVec.push_back(imSSIM1);
-			updSSIM = false;
-			currentImageEnum = SEMMIenum;
-			selected1 = -1;
-			selected2 = -1;
-
-			ImGui::OpenPopup("Betoltes##Pop");
-		}
-		imFo->Scale = 1.f;
-		ImGui::PopFont();
-
-	*/
 }
 
 void Image2SSIM::SSIMSurface() {
 
-	/*SDL_Surface* ssimSurface = SDL_CreateRGBSurface(0, im1.getSurface()->w, im1.getSurface()->h, im1.getSurface()->format->BitsPerPixel, 0, 0, 0, 0);
-	Image seged;
-	seged.setSurface(ssimSurface);*/
-
 	//SDL_LockSurface(ssimSurface);
 
-	std::vector<std::vector<colorsStruckt>> colorVect(ssimSize, std::vector<colorsStruckt>(ssimSize));
+	std::vector<std::vector<colorsStruckt>> colorVect(ssimSize);
+	for (int i = 0; i < ssimSize; i++) {
+		colorVect[i].resize(ssimSize);
+	}
+
+	/*std::vector<std::vector<colorsStruckt*>> colorVect2(ssimSize);
+	for (int i = 0; i < ssimSize; i++) {
+		colorVect[i].resize(ssimSize);
+	}*/
+
+	//std::vector<std::vector<colorsStruckt*>> colorVect2(ssimSize, std::vector<colorsStruckt*>(ssimSize)); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	//std::vector<std::vector<Uint8>> grey1(windowSize, std::vector<Uint8>(windowSize));
 	//std::vector<std::vector<Uint8>> grey2(windowSize, std::vector<Uint8>(windowSize));
@@ -996,20 +897,20 @@ void Image2SSIM::SSIMSurface() {
 	for (int x = 0; x < surface->w; x += ssimSize) {
 		for (int y = 0; y < surface->h; y += ssimSize) {
 
-			for (int i = 0; i < ssimSize; i++) {
+			for (int i = 0; i < ssimSize; i++) { //check
 				for (int j = 0; j < ssimSize; j++) {
 
 					Uint8 r, g, b, a;
 					Uint8 r2, g2, b2, a2;
-					SDL_GetRGBA(ImageModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format, &r, &g, &b, &a);
-					SDL_GetRGBA(ImageModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format, &r2, &g2, &b2, &a2);
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format, &r, &g, &b, &a);
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format, &r2, &g2, &b2, &a2);
 
-					switch (ssimColor)
+					/*switch (ssimColor)
 					{
-					case 0:
-						colorVect[i][j].grey1 = RegularModify::greyscale(ImageModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format);
-						colorVect[i][j].grey2 = RegularModify::greyscale(ImageModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format);
-						break;
+					case 0:*/
+						colorVect[i][j].grey1 = RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format);
+						colorVect[i][j].grey2 = RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format);
+						/*break;
 					case 1:
 						colorVect[i][j].red1 = r;
 						colorVect[i][j].red2 = r2;
@@ -1022,15 +923,15 @@ void Image2SSIM::SSIMSurface() {
 						colorVect[i][j].blue1 = b;
 						colorVect[i][j].blue2 = b2;
 						break;
-					case 4:
+					case 4:*/
 						colorVect[i][j].red1 = r;
 						colorVect[i][j].red2 = r2;
 						colorVect[i][j].green1 = g;
 						colorVect[i][j].green2 = g2;
 						colorVect[i][j].blue1 = b;
 						colorVect[i][j].blue2 = b2;
-						break;
-					}
+						/*break;
+					}*/
 
 					colorVect[i][j].alpha1 = a;
 					colorVect[i][j].alpha2 = a2;
@@ -1041,7 +942,8 @@ void Image2SSIM::SSIMSurface() {
 			float ssimRed = 0.f;
 			float ssimGreen = 0.f;
 			float ssimBlue = 0.f;
-			Uint8 ymc, rU, gU, bU;
+			Uint32 putColor;
+			Uint8 seged;
 
 			switch (ssimColor)
 			{
@@ -1049,25 +951,29 @@ void Image2SSIM::SSIMSurface() {
 				ssimGrey = SSIMmethod(colorVect, 0);
 				ssimOsszeg += ssimGrey;
 				num++;
-				ymc = (Uint8)((ssimGrey + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimGrey + 1.0) * 255 / 2);
+				putColor = (seged << 24) + (seged << 16) + (seged << 8);
 				break;
 			case 1:
 				ssimRed = SSIMmethod(colorVect, 1);
 				ssimOsszeg += ssimRed;
 				num++;
-				ymc = (Uint8)((ssimRed + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimRed + 1.0) * 255 / 2);
+				putColor = (seged << 24) + (seged << 16) + (255 << 8); //fix
 				break;
 			case 2:
 				ssimGreen = SSIMmethod(colorVect, 2);
 				ssimOsszeg += ssimGreen;
 				num++;
-				ymc = (Uint8)((ssimGreen + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimGreen + 1.0) * 255 / 2);
+				putColor = (seged << 24) + (255 << 16) + (seged << 8);
 				break;
 			case 3:
 				ssimBlue = SSIMmethod(colorVect, 3);
 				ssimOsszeg += ssimBlue;
 				num++;
-				ymc = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				putColor = (255 << 24) + (seged << 16) + (seged << 8);
 				break;
 			case 4:
 				ssimRed = SSIMmethod(colorVect, 1);
@@ -1079,9 +985,13 @@ void Image2SSIM::SSIMSurface() {
 				ssimBlue = SSIMmethod(colorVect, 3);
 				ssimOsszeg += ssimBlue;
 				num++;
-				rU = (Uint8)((ssimRed + 1.0) * 255 / 2);
-				gU = (Uint8)((ssimGreen + 1.0) * 255 / 2);
-				bU = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				putColor = ((Uint8)((ssimRed + 1.0) * 255 / 2) << 24) + ((Uint8)((ssimGreen + 1.0) * 255 / 2) << 16) + ((Uint8)((ssimBlue + 1.0) * 255 / 2) << 8);
+				break;
+			case 5:
+				ssimGrey = SSIMmethod(colorVect, 0);
+				ssimOsszeg += ssimGrey;
+				num++;
+				putColor = heatmapColor(ssimGrey);
 				break;
 			}
 			//red 0 0 255   green 0 255 0   blue 255 0 0     
@@ -1092,25 +1002,7 @@ void Image2SSIM::SSIMSurface() {
 				for (int j = 0; j < ssimSize; j++) {
 					if (x + i < surface->w && y + j < surface->h) {
 
-						switch (ssimColor)
-						{
-						case 0:
-							ImageModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, ymc, ymc, ymc, colorVect[i][j].alpha1), surface);
-							break;
-						case 1:
-							ImageModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, ymc, ymc, 255, colorVect[i][j].alpha1), surface);
-							break;
-						case 2:
-							ImageModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, ymc, 255, ymc, colorVect[i][j].alpha1),surface);
-							break;
-						case 3:
-							ImageModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, 255, ymc, ymc, colorVect[i][j].alpha1), surface);
-							break;
-						case 4:
-							ImageModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, bU, gU, rU, colorVect[i][j].alpha1), surface);
-							break;
-						}
-
+						SurfaceModify::PutPixel32(x + i, y + j, SDL_MapRGBA(surface->format, (putColor >> 24) & 0xFF, (putColor >> 16) & 0xFF, (putColor >> 8) & 0xFF, 255 - (colorVect[i][j].alpha1 - colorVect[i][j].alpha2) ), surface);
 					}
 				}
 			}
@@ -1121,12 +1013,9 @@ void Image2SSIM::SSIMSurface() {
 
 	textureFromSurface();
 
-	//SDL_UnlockSurface(ssimSurface); seperable filter matlab 
-
-	//return ssimSurface;
 }
 
-float Image2SSIM::SSIMmethod(std::vector<std::vector<colorsStruckt>> window, int currCol) {
+float Image2SSIM::SSIMmethod(std::vector<std::vector<colorsStruckt>> window, /*std::vector<std::vector<colorsStruckt>> window2,*/ int currCol) { //black and white + stuff
 
 	float mean1 = 0.f;
 	float mean2 = 0.f;
@@ -1216,11 +1105,15 @@ Image2Merge::Image2Merge(Image im1, Image im2) : Image2(im1, im2) {
 }
 
 void Image2Merge::editableDrawImage() {
-	ImGui::Text("Merge");
 
 	ImFont* imFo = ImGui::GetFont();
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
+
+	imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
+	ImGui::Text("Ket kep osszeolvasztasa");
+	imFo->Scale = 1.f;	ImGui::PopFont();
+	ImGui::NewLine();
 
 	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
 	if (ImGui::IsItemHovered())
@@ -1236,13 +1129,15 @@ void Image2Merge::editableDrawImage() {
 	if (ImGui::IsItemClicked()) {
 		upd = !upd;
 	}
+	ImGui::NewLine();
 
 	ImGui::Text("Az atmenet meredeksege:");
 	ImGui::SameLine();
 	RegularModify::CursorPos(200);
-	ImGui::PushItemWidth(200);
+	ImGui::PushItemWidth(std::max(surface->w,300)-200 );
 	ImGui::SliderFloat("##slope", &slope, 1.0f, 10.0f, "%.4f", 3.0f);
 	ImGui::PopItemWidth();
+	ImGui::NewLine();
 
 }
 
@@ -1250,10 +1145,10 @@ void Image2Merge::plotLineMerge(int x, int y) {
 	for (int i = 0; i < imIn1.getSurface()->w; i++) {
 		for (int j = 0; j < imIn1.getSurface()->h; j++) {
 			if (j < slope * (i - x) + y) {
-				ImageModify::PutPixel32(i, j, ImageModify::GetColor(i, j, imIn1.getSurface()), surface);
+				SurfaceModify::PutPixel32(i, j, SurfaceModify::GetColor(i, j, imIn1.getSurface()), surface);
 			}
 			else {
-				ImageModify::PutPixel32(i, j, ImageModify::GetColor(i, j, imIn2.getSurface()), surface);
+				SurfaceModify::PutPixel32(i, j, SurfaceModify::GetColor(i, j, imIn2.getSurface()), surface);
 			}
 		}
 	}
@@ -1266,7 +1161,7 @@ void Image2Merge::plotLineMerge(int x, int y) {
 }*/
 
 
-void ImageModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
+void SurfaceModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
 		if (x0 > x1) {
 			plotLineLow(x1, y1, x0, y0, sur);
@@ -1285,7 +1180,7 @@ void ImageModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
 	}
 }
 
-void ImageModify::plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur){
+void SurfaceModify::plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur){
 	int dx = x1 - x0;
 	int dy = y1 - y0;
 	int yi = 1;
@@ -1310,7 +1205,7 @@ void ImageModify::plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur){
 	}
 }
 
-void ImageModify::plotLineHigh(int x0,int y0,int x1,int y1, SDL_Surface* sur){
+void SurfaceModify::plotLineHigh(int x0,int y0,int x1,int y1, SDL_Surface* sur){
 	int dx = x1 - x0;
 	int dy = y1 - y0;
 	int xi = 1;
@@ -1335,7 +1230,7 @@ void ImageModify::plotLineHigh(int x0,int y0,int x1,int y1, SDL_Surface* sur){
 	}
 }
 
-void ImageModify::PutPixel32(int x, int y, Uint32 color, SDL_Surface* sur)
+void SurfaceModify::PutPixel32(int x, int y, Uint32 color, SDL_Surface* sur)
 {
 	if (SDL_MUSTLOCK(sur))
 		SDL_LockSurface(sur);
@@ -1344,14 +1239,14 @@ void ImageModify::PutPixel32(int x, int y, Uint32 color, SDL_Surface* sur)
 		SDL_UnlockSurface(sur);
 }
 
-void ImageModify::PutPixel32_nolock(int x, int y, Uint32 color, SDL_Surface* sur)
+void SurfaceModify::PutPixel32_nolock(int x, int y, Uint32 color, SDL_Surface* sur)
 {
 	Uint8* pixel = (Uint8*)sur->pixels;
 	pixel += (y * sur->pitch) + x * sur->format->BytesPerPixel;
 	*((Uint32*)pixel) = color;
 }
 
-Uint32 ImageModify::GetColor(int x, int y, SDL_Surface* sur) {
+Uint32 SurfaceModify::GetColor(int x, int y, SDL_Surface* sur) {
 	return *(Uint32*)((Uint8*)sur->pixels + y * sur->pitch + x * sur->format->BytesPerPixel);
 }
 
@@ -1361,18 +1256,14 @@ void RegularModify::CursorPos(float offset) {
 	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 }
 
-Uint8 RegularModify::greyscale(Uint32 pixel, SDL_PixelFormat* format) {
+Uint8 RegularModify::greyScale(Uint32 pixel, SDL_PixelFormat* format) {
 	Uint8 r, g, b;
 	SDL_GetRGB(pixel, format, &r, &g, &b);
 	return 0.299f * r + 0.587f * g + 0.114f * b;
 }
 
-void CMyApp::Resize(int _w, int _h)
+void CMyApp::Resize(int _w, int _h) //??????????????????????????????????????????????????
 {
 	glViewport(0, 0, _w, _h);
 
-	m_matProj = glm::perspective(45.0f,		// 90 fokos nyilasszog
-		_w / (float)_h,	// ablakmereteknek megfelelo nezeti arany
-		0.01f,			// kozeli vagosik
-		100.0f);		// tavoli vagosik
 }

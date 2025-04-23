@@ -76,12 +76,4 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="myFrag.frag">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="myVert.vert">
-      <Filter>Shaders</Filter>
-    </None>
-  </ItemGroup>
 </Project>

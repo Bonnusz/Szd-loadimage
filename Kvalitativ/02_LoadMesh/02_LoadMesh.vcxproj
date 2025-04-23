@@ -104,10 +104,6 @@
     <ClInclude Include="t:\OGLPack\include\imgui\imgui_impl_sdl_gl3.h" />
     <ClInclude Include="T:\OGLPack\include\imgui\imgui_internal.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="myFrag.frag" />
-    <None Include="myVert.vert" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

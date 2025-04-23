@@ -155,32 +155,12 @@ int main(int argc, char* args[])
 		while (SDL_PollEvent(&ev))
 		{
 			ImGui_ImplSdlGL3_ProcessEvent(&ev);
-			bool is_mouse_captured = ImGui::GetIO().WantCaptureMouse; //kell-e az imgui-nak az egér
-			bool is_keyboard_captured = ImGui::GetIO().WantCaptureKeyboard;	//kell-e az imgui-nak a billentyûzet
+			//bool is_mouse_captured = ImGui::GetIO().WantCaptureMouse; //kell-e az imgui-nak az egér
+			//bool is_keyboard_captured = ImGui::GetIO().WantCaptureKeyboard;	//kell-e az imgui-nak a billentyûzet
 			switch (ev.type)
 			{
 			case SDL_QUIT:
 				quit = true;
-				break;
-			case SDL_KEYDOWN:
-				if (ev.key.keysym.sym == SDLK_ESCAPE)
-					quit = true;
-				app.KeyboardDown(ev.key);
-				break;
-			case SDL_KEYUP:
-				app.KeyboardUp(ev.key);
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-				app.MouseDown(ev.button);
-				break;
-			case SDL_MOUSEBUTTONUP:
-				app.MouseUp(ev.button);
-				break;
-			case SDL_MOUSEWHEEL:
-				app.MouseWheel(ev.wheel);
-				break;
-			case SDL_MOUSEMOTION:
-				app.MouseMove(ev.motion);
 				break;
 			case SDL_WINDOWEVENT:
 				if (ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)

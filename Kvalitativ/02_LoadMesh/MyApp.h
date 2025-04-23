@@ -20,20 +20,15 @@
 
 class Image {
 public:
-	/*Image(void);
-	~Image(void);*/
+	/*~Image(void);*/
 
 	SDL_Surface* getSurface() { return surface; }
 	void setSurface(SDL_Surface* surface) { this->surface = surface; }
-	//void blintSurface(SDL_Surface* copy) { SDL_BlitSurface(copy, NULL, surface, NULL); }
 	GLuint getTexture() { return texture; }
 	void textureFromSurface();
 
-	void drawImage();
-	void editableDrawImage();
-
-	//void Load(char* s);
-	//void loadImage(char* s);
+	void drawImage(int size, bool selected);//rename
+	virtual void editableDrawImage();
 
 protected:
 	SDL_Surface* surface;
@@ -64,7 +59,7 @@ public:
 	Image1Magnify(void);
 	Image1Magnify(Image im);
 
-	void editableDrawImage();
+	void editableDrawImage() override;
 
 protected:
 	void MagnifyMethod();
@@ -72,7 +67,7 @@ protected:
 	int zoomW;
 	int zoomH;
 	float zoomTimes;
-	int smallW;
+	int smallW; //smallX
 	int smallH;
 	bool smallChange;
 	int bigW;
@@ -95,11 +90,11 @@ public:
 	Image2SSIM(Image im1, Image im2);
 
 	void SSIMSurface();
-	void editableDrawImage();
+	void editableDrawImage() override;
 
 protected:
 	struct colorsStruckt { Uint8 grey1, grey2, red1, red2, green1, green2, blue1, blue2, alpha1, alpha2; };
-	float SSIMmethod(std::vector<std::vector<colorsStruckt>> window, int currCol);
+	float SSIMmethod(std::vector<std::vector<colorsStruckt>> window/*, std::vector<std::vector<colorsStruckt>> window2*/, int currCol);
 
 	int ssimColor;
 	int ssimSize;
@@ -114,14 +109,14 @@ public:
 	Image2Merge(Image im1, Image im2);
 
 	void plotLineMerge(int x, int y);
-	void editableDrawImage();
+	void editableDrawImage() override;
 
 protected:
 	float slope;
 	bool upd;
 };
 
-class ImageModify {
+class SurfaceModify {
 public:
 	static void plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur);
 	static void PutPixel32(int x, int y, Uint32 color, SDL_Surface* sur);
@@ -136,11 +131,10 @@ private:
 class RegularModify {
 public:
 	static void CursorPos(float offset);
-	static Uint8 greyscale(Uint32 pixel, SDL_PixelFormat* format);
+	static Uint8 greyScale(Uint32 pixel, SDL_PixelFormat* format);
 
 	//add the save here
 
-	//static void Resize(int, int);
 };
 
 
@@ -162,63 +156,11 @@ public:
 	//static??
 	bool Verify(char* filePath, char* filePathv, int noErr);
 
-	//potencialremove
-	void KeyboardDown(SDL_KeyboardEvent&);
-	void KeyboardUp(SDL_KeyboardEvent&);
-	void MouseMove(SDL_MouseMotionEvent&);
-	void MouseDown(SDL_MouseButtonEvent&);
-	void MouseUp(SDL_MouseButtonEvent&);
-	void MouseWheel(SDL_MouseWheelEvent&);
-	/*
-	*/
-
 	std::vector<Image> imageVec;
 	std::vector<bool> boolVec; //not needed
 	std::vector<int> selectedImageVec;
 
 protected:
-
-	// shaderekhez szükséges változók
-	GLuint m_programID; // shaderek programja
-
-	// transzformációs mátrixok
-	glm::mat4 m_matWorld;
-	glm::mat4 m_matView;
-	glm::mat4 m_matProj;
-
-	// Uniformok helye a shaderekben
-	GLuint	m_loc_mvp;
-	GLuint	m_loc_worldIT;
-	GLuint	m_loc_world;
-	GLuint	m_loc_texture;
-	GLuint	m_loc_eye;
-
-	// OpenGL-es dolgok
-	GLuint m_vaoID; // vertex array object erõforrás azonosító
-	GLuint m_vboID; // vertex buffer object erõforrás azonosító
-	GLuint m_ibID;  // index buffer object erõforrás azonosító
-	GLuint m_waterTextureID; // fájlból betöltött textúra azonosítója
-	GLuint m_samplerID; // sampler object azonosító
-
-	struct Vertex
-	{
-		glm::vec3 p; // pozíció
-		glm::vec3 c; // szín
-		glm::vec2 t; // textúra koordináták
-	};
-
-	// mesh adatok
-	Mesh* m_mesh;
-
-	glm::vec3 toDesc(float fi, float theta);
-	float m_fi = M_PI / 2.0;
-	float m_theta = M_PI / 2.0;
-
-	glm::vec3 m_eye = glm::vec3(0, 5, 20);
-	glm::vec3 m_at = m_eye + toDesc(m_fi, m_theta);
-	glm::vec3 m_up = glm::vec3(0, 1, 0);
-	glm::vec3 m_forward = glm::vec3(m_at - m_eye);
-	float t = 1;
 
 	enum ImageEnum {
 		SEMMIENUM,
@@ -235,7 +177,7 @@ protected:
 
 	ImGuiWindowFlags window_flags;
 
-	bool currentError[5];
+	bool currentError[5]; //check
 
 	char stradd[128];
 	char straddverified[128];

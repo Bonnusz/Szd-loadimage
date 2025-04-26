@@ -2,9 +2,6 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-//#define IM_ALLOC(_SIZE)                     ImGui::MemAlloc(_SIZE)
-//#define IM_FREE(_PTR)                       ImGui::MemFree(_PTR)
-
 #include "MyApp.h"
 #include "GLUtils.hpp"
 
@@ -12,51 +9,17 @@
 #include <imgui/imgui.h>
 #include "stb_image.h"
 
-static void ShowHelpMarker(const char* desc) //!!!! utolsó pillanati metódusok, el lesznek majd osztályokba rakva
-{
-	ImGui::SameLine();
-	ImGui::TextDisabled("(?)");
-	if (ImGui::IsItemHovered())
-	{
-		ImGui::BeginTooltip();
-		ImGui::PushTextWrapPos(450.0f);
-		ImGui::TextUnformatted(desc);
-		ImGui::PopTextWrapPos();
-		ImGui::EndTooltip();
-	}
-}
-
-static Uint32 heatmapColor(float value) {
-	
-	int r, g, b;
-
-	if (value < 0.0f) {
-		// red (255,0,0) -> yellow (255,255,0)
-		r = 255;
-		g = static_cast<int>(255 * (value + 1.0f) / 1.0f);
-		b = 0;
-	}
-	else {
-		// yellow (255,255,0) -> blue (0,0,255)
-		r = g = static_cast<int>(255 * (1.0f - (value / 1.0f)));
-		//g = static_cast<int>(255 * (1.0f - (value / 1.0f)));
-		b = static_cast<int>(255 * (value / 1.0f));
-	}
-
-	return (r << 24) + (g << 16) + (b << 8);
-}
-
 CMyApp::CMyApp(void)
 {
 	window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_HorizontalScrollbar;
 
-	for (int i = 0;i< sizeof(currentError);i++) {
-		currentError[i] = false;
+	for (int i = 0;i< sizeof(currentErrors);i++) {
+		currentErrors[i] = false;
 	}
 
 	strcpy(stradd, "C:/Users/User/Pictures/ac2.jpg");
 	strcpy(straddverified, stradd);
-	Verify(stradd, straddverified, 0);
+	RegularModify::Verify(stradd, straddverified);
 
 	currentImageEnum = SEMMIENUM;
 	strcpy(outstr, "C:/Users/User/Pictures/save.png");
@@ -139,7 +102,7 @@ void CMyApp::Render()
 		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 		ImGui::Text("Kepek:");
 		imFo->Scale = 1.f;	ImGui::PopFont();
-		ShowHelpMarker("A betoltott kepek jelennek meg itt. Kattints rajuk, hogy kivalaszd oket.");
+		RegularModify::ShowHelpMarker("A betoltott kepek jelennek meg itt. Kattints rajuk, hogy kivalaszd oket.");
 		ImGui::NewLine();
 
 		if(imageVec.size()>0) {
@@ -149,17 +112,15 @@ void CMyApp::Render()
 			
 			ImGui::BeginChild("scrolling", ImVec2(0, 320), false , ImGuiWindowFlags_HorizontalScrollbar);
 			for (int i = 0; i < imageVec.size(); i++) {
-				imageVec[i].drawImage(300, boolVec[i]);
+				imageVec[i].drawImage(300, std::find(selectedImageVec.begin(),selectedImageVec.end(),i)!=selectedImageVec.end() );
 				if (ImGui::IsItemClicked() && currentImageEnum == SEMMIENUM)
 				{
-					if (boolVec[i] == false) {
+					if (std::find(selectedImageVec.begin(), selectedImageVec.end(), i) == selectedImageVec.end()) {
 						selectedImageVec.push_back(i);
 					}
 					else {
 						selectedImageVec.erase(std::remove(selectedImageVec.begin(), selectedImageVec.end(), i), selectedImageVec.end());
 					}
-
-					boolVec[i] = !boolVec[i];
 				}
 				ImGui::SameLine();
 
@@ -181,7 +142,7 @@ void CMyApp::Render()
 
 	if(currentImageEnum == SEMMIENUM){
 		for (int i = 0; i < selectedImageVec.size(); i++) { //edit !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			imageVec[selectedImageVec[i]].editableDrawImage();
+			imageVec[selectedImageVec[i]].drawImage();
 			ImGui::SameLine();
 		}
 		if (selectedImageVec.size() > 0) {
@@ -191,7 +152,7 @@ void CMyApp::Render()
 		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 		ImGui::Text("Muveletek:");
 		imFo->Scale = 1.f;	ImGui::PopFont();
-		ShowHelpMarker("A kivalasztott kepekkel vegrehajthato muveletek.");
+		RegularModify::ShowHelpMarker("A kivalasztott kepekkel vegrehajthato muveletek.");
 		ImGui::NewLine();
 
 		switch (selectedImageVec.size())
@@ -281,7 +242,7 @@ void CMyApp::Render()
 		ImGui::InputText("##StrAdd", stradd, IM_ARRAYSIZE(stradd));
 		ImGui::PopItemWidth();
 
-		if (currentError[0]) {
+		if (currentErrors[0]) {
 			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Hibas eleresi utvonal");
 			ImGui::PopStyleColor();
@@ -295,12 +256,15 @@ void CMyApp::Render()
 		imFo->Scale = 1.3f;
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Betoltes##stradd", ImVec2(150, 50))) {
-			if (Verify(stradd, straddverified, 0)) {
+			if (RegularModify::Verify(stradd, straddverified)) {
 				Image0FromFile imadd;
 				imadd.Load(straddverified);
 				imadd.textureFromSurface();
 				imageVec.push_back(imadd);
-				boolVec.push_back(false);
+				currentErrors[0] = false;
+			}
+			else {
+				currentErrors[0] = true;
 			}
 		}
 		imFo->Scale = 1.f;
@@ -322,9 +286,8 @@ void CMyApp::Render()
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Betoltes##stradd", ImVec2(150, 50))) {
 			imageVec.push_back(im1mag);
-			boolVec.push_back(false);
 
-			ImGui::OpenPopup("Betoltes##Pop"); //something else
+			ImGui::OpenPopup("Betoltes##Pop");
 		}
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
@@ -347,7 +310,7 @@ void CMyApp::Render()
 		ImGui::PushItemWidth(std::max(imageVec[selectedImageVec[0]].getSurface()->w, 300));
 		ImGui::InputText("##SavePath", outstr, IM_ARRAYSIZE(outstr));
 		ImGui::PopItemWidth();
-		if (currentError[2]) {
+		if (currentErrors[1]) {
 			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
 			ImGui::Text("Hibas mentesi utvonal");
 			ImGui::PopStyleColor();
@@ -363,12 +326,12 @@ void CMyApp::Render()
 		if (ImGui::Button("Mentes", ImVec2(150, 50))) {
 			struct stat sb;
 			if (stat(outstr, &sb) != 0) {
-				currentError[2] = true;
+				currentErrors[1] = true;
 			}
 			else {
 				IMG_SavePNG(imageVec[selectedImageVec[0]].getSurface(), outstr);
 				currentImageEnum = SEMMIENUM;
-				currentError[2] = false;
+				currentErrors[1] = false;
 
 				ImGui::OpenPopup("Mentes##Pop");
 			}
@@ -392,9 +355,8 @@ void CMyApp::Render()
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Betoltes##stradd", ImVec2(150, 50))) {
 			imageVec.push_back(im2ssim);
-			boolVec.push_back(false);
 
-			ImGui::OpenPopup("Betoltes##Pop"); //something else
+			ImGui::OpenPopup("Betoltes##Pop");
 		}
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
@@ -415,9 +377,8 @@ void CMyApp::Render()
 		ImGui::PushFont(imFo);
 		if (ImGui::Button("Betoltes##stradd", ImVec2(150, 50))) {
 			imageVec.push_back(im2merge);
-			boolVec.push_back(false);
 
-			ImGui::OpenPopup("Betoltes##Pop"); //something else
+			ImGui::OpenPopup("Betoltes##Pop");
 		}
 		imFo->Scale = 1.f;
 		ImGui::PopFont();
@@ -476,25 +437,12 @@ void CMyApp::Render()
 	ImGui::End();
 }
 
-bool CMyApp::Verify(char* filePath , char* filePathv, int noErr) {
+void CMyApp::Resize(int _w, int _h) //??????????????????????????????????????????????????
+{
+	glViewport(0, 0, _w, _h);
 
-	SDL_Surface* imageSurface = IMG_Load(filePath);
-	if (!imageSurface) {
-		imageSurface = IMG_Load("texture.bmp");
-		strcpy(filePathv, "texture.bmp");
-		currentError[noErr] = true;
-	}
-	else {
-		strcpy(filePathv, filePath);
-		currentError[noErr] = false;
-	}
-	if (!imageSurface) {
-		printf("Failed to load image (also backup image got deleted): %s\n", IMG_GetError());
-		return false;
-	}
-	SDL_FreeSurface(imageSurface);
-	return true;
 }
+
 
 void Image::textureFromSurface() {
 	GLuint textureID;
@@ -514,10 +462,14 @@ void Image::textureFromSurface() {
 	texture = textureID;
 }
 
+void Image::drawImage() {
+	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
+}
+
 void Image::drawImage(int size, bool selected) {
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
-	ImGui::ImageButton((void*)(intptr_t)texture, ImVec2(size, size), ImVec2(0, 0), ImVec2( surface->w > size ? surface->w/size : size/surface->w , surface->h > size ? surface->h / size : size / surface->h), selected ? 5 : 0, ImColor(0, 0, 0, 255));
+	ImGui::ImageButton((void*)(intptr_t)texture, ImVec2(size, size), ImVec2(0, 0), ImVec2(1,1), selected ? 5 : 0, ImColor(0, 0, 0, 255));
 	ImGui::PopStyleColor(2);
 }
 
@@ -551,12 +503,8 @@ Image1Magnify::Image1Magnify(void){}
 
 Image1Magnify::Image1Magnify(Image im) : Image1(im) {
 	SDL_Surface* source = imIn.getSurface();  //put this in image1
-	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
-		source->w, source->h, source->format->BitsPerPixel, source->format->format);
-
-	if (destination != nullptr) {
-		SDL_BlitSurface(source, nullptr, destination, nullptr);
-	}
+	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0, source->w, source->h, source->format->BitsPerPixel, source->format->format);
+	SDL_BlitSurface(source, nullptr, destination, nullptr);
 
 	surface = destination;
 	textureFromSurface();
@@ -564,11 +512,11 @@ Image1Magnify::Image1Magnify(Image im) : Image1(im) {
 	zoomW = 100;
 	zoomH = 50;
 	zoomTimes = 2.f;
-	smallW = 0;
-	smallH = 0;
+	smallX = 0;
+	smallY = 0;
 	smallChange = true;
-	bigW = 0;
-	bigH = 0;
+	bigX = 0;
+	bigY = 0;
 	upd = false;
 }
 
@@ -605,7 +553,7 @@ void Image1Magnify::editableDrawImage() {
 			else if (smallChange && focus_x > surface->w - focus_sz_x) focus_x = surface->w - focus_sz_x;
 			else if (!smallChange && focus_x < zoomW * zoomTimes + 1) focus_x = zoomW * zoomTimes + 1;
 			else if (!smallChange && focus_x > surface->w) focus_x = surface->w;
-			float focus_y = io.MousePos.y - pos.y - focus_sz_y * 0.5f;
+			float focus_y = io.MousePos.y - pos.y - (smallChange ? focus_sz_y : 0); // change here for cursor.y relative to the rectangles
 			if (smallChange && focus_y < 0.0f) focus_y = 0.0f;
 			else if (smallChange && focus_y > surface->h - focus_sz_y) focus_y = surface->h - focus_sz_y;
 			else if (!smallChange && focus_y < zoomH * zoomTimes + 1) focus_y = zoomH * zoomTimes + 1;
@@ -613,12 +561,12 @@ void Image1Magnify::editableDrawImage() {
 			ImVec2 uv0 = ImVec2((focus_x) / surface->w, (focus_y) / surface->h);
 			ImVec2 uv1 = ImVec2((focus_x + focus_sz_x) / surface->w, (focus_y + focus_sz_y) / surface->h);
 			if (smallChange) {
-				smallW = focus_x;
-				smallH = focus_y;
+				smallX = focus_x;
+				smallY = focus_y;
 			}
 			else {
-				bigW = surface->w - focus_x;
-				bigH = surface->h - focus_y;
+				bigX = surface->w - focus_x;
+				bigY = surface->h - focus_y;
 			}
 		}
 	}
@@ -651,7 +599,7 @@ void Image1Magnify::editableDrawImage() {
 	ImGui::PopStyleColor(3);
 	imFo->Scale = 1.f;
 	ImGui::PopFont();
-	ShowHelpMarker("Ezt kivalasztva a nagyitando terulet helyet tudod majd mozgatni.");
+	RegularModify::ShowHelpMarker("Ezt kivalasztva a nagyitando terulet helyet tudod majd mozgatni.");
 	
 	ImGui::SameLine();
 	imFo->Scale = 1.3f;
@@ -674,7 +622,7 @@ void Image1Magnify::editableDrawImage() {
 	imFo->Scale = 1.f;
 	ImGui::PopFont();
 
-	ShowHelpMarker("Ezt kivalasztva a felnagyitott terulet kivetitesenek a helyet tudod majd mozgatni.");
+	RegularModify::ShowHelpMarker("Ezt kivalasztva a felnagyitott terulet kivetitesenek a helyet tudod majd mozgatni.");
 
 
 	ImGui::NewLine();
@@ -686,7 +634,7 @@ void Image1Magnify::editableDrawImage() {
 	ImGui::InputInt("##ZoomWidth", &zoomW, 0);
 	ImGui::PopItemWidth();
 	if (zoomW < 1) { zoomW = 1; }
-	if (zoomW > fmin(surface->w / zoomTimes - 1,surface->w - 1)) { zoomW = fmin(surface->w / zoomTimes - 1, surface->w - 1); } //bigW = im1.getSurface()->w - zoomW * zoomTimes;
+	if (zoomW > fmin(surface->w / zoomTimes - 1,surface->w - 1)) { zoomW = fmin(surface->w / zoomTimes - 1, surface->w - 1); } //bigX = im1.getSurface()->w - zoomW * zoomTimes;
 	ImGui::Text("Nagyitando terulet magassaga:");
 	ImGui::SameLine();
 	RegularModify::CursorPos(230);
@@ -716,41 +664,52 @@ void Image1Magnify::MagnifyMethod() {
 	for (int i = zoomW * zoomTimes; i > 0; i--) {
 		for (int j = zoomH * zoomTimes; j > 0; j--) {
 			if (i == 1 || i == std::floor(zoomW * zoomTimes) || j == 1 || j == std::floor(zoomH * zoomTimes)) {
-				SurfaceModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, red, surface);
+				SurfaceModify::PutPixel32(surface->w - i - bigX - 1, surface->h - j - bigY - 1, red, surface);
 			}
 			else {
-				SurfaceModify::PutPixel32(surface->w - i - bigW - 1, surface->h - j - bigH - 1, SurfaceModify::GetColor(int((zoomW * zoomTimes - i) / zoomTimes + smallW), int((zoomH * zoomTimes - j) / zoomTimes + smallH), surface), surface);
+				SurfaceModify::PutPixel32(surface->w - i - bigX - 1, surface->h - j - bigY - 1, SurfaceModify::GetColor(int((zoomW * zoomTimes - i) / zoomTimes + smallX), int((zoomH * zoomTimes - j) / zoomTimes + smallY), surface), surface);
 			}
 		}
 	}
-	for (int i = 0 + smallW; i < zoomW + smallW; i++) {
-		for (int j = 0 + smallH; j < zoomH + smallH; j++) {
-			if (i == 0 + smallW || j == 0 + smallH || i == zoomW + smallW - 1 || j == zoomH + smallH - 1) {
+	for (int i = 0 + smallX; i < zoomW + smallX; i++) {
+		for (int j = 0 + smallY; j < zoomH + smallY; j++) {
+			if (i == 0 + smallX || j == 0 + smallY || i == zoomW + smallX - 1 || j == zoomH + smallY - 1) {
 				SurfaceModify::PutPixel32(i, j, red, surface);
 			}
 		}
 	}
-	ImVec2 small1 = ImVec2(smallW, zoomH + smallH);
-	ImVec2 small2 = ImVec2(zoomW + smallW, smallH);
-	ImVec2 big1 = ImVec2(surface->w - bigW - zoomW * zoomTimes, surface->h - bigH);
-	ImVec2 big2 = ImVec2(surface->w - bigW, surface->h - bigH - zoomH * zoomTimes);
+	ImVec2 small1 = ImVec2(smallX, zoomH + smallY);
+	ImVec2 small2 = ImVec2(zoomW + smallX, smallY);
+	ImVec2 big1 = ImVec2(surface->w - bigX - zoomW * zoomTimes, surface->h - bigY);
+	ImVec2 big2 = ImVec2(surface->w - bigX, surface->h - bigY - zoomH * zoomTimes);
 
-	int tempSmall1y = small1.y, tempBig1y = big1.y;
+	if (!(small1.y < big1.y && small2.y > big2.y && small1.x > big1.x && small2.x < big2.x)) {
+		if (small1.y < big1.y && small2.y > big2.y) {
+			if (small1.x < big1.x) {
+				small2.x = small1.x;
+				big2.x = big1.x;
+			}
+			else {
+				small1.x = small2.x;
+				big1.x = big2.x;
+			}
+		}
+		else{
+			int tempSmall1y = small1.y, tempBig1y = big1.y;
 
-	if (small1.x > big1.x && small1.y < big1.y || small1.x < big1.x && small1.y > big1.y) {
-		small1.y = small2.y;
-		big1.y = big2.y;
+			if (small1.x > big1.x && small1.y < big1.y || small1.x < big1.x && small1.y > big1.y) {
+				small1.y = small2.y;
+				big1.y = big2.y;
+			}
+			if (small2.x > big2.x && small2.y < big2.y || small2.x < big2.x && small2.y > big2.y) {
+				small2.y = tempSmall1y;
+				big2.y = tempBig1y;
+			}
+		}
+
+		SurfaceModify::plotLine(small1.x, small1.y, big1.x, big1.y, surface);
+		SurfaceModify::plotLine(small2.x, small2.y, big2.x, big2.y, surface);
 	}
-
-	if (small2.x > big2.x && small2.y < big2.y || small2.x < big2.x && small2.y > big2.y) {
-		small2.y = tempSmall1y;
-		big2.y = tempBig1y;
-	}
-
-	int x0 = small1.x, x1 = big1.x, y0 = small1.y, y1 = big1.y;
-	SurfaceModify::plotLine(x0, y0, x1, y1, surface);	
-	x0 = small2.x, x1 = big2.x, y0 = small2.y, y1 = big2.y;
-	SurfaceModify::plotLine(x0, y0, x1, y1, surface);
 
 	textureFromSurface();
 }
@@ -821,7 +780,7 @@ void Image2SSIM::editableDrawImage() {
 	ImGui::NewLine();
 
 	ImGui::Text("Osszesitett SSIM ertek: %f", ssimOsszeg);
-	ShowHelpMarker("A kepeken vegrehajtott sSIM algoritmusok eredmenyenek az atlaga.");
+	RegularModify::ShowHelpMarker("A kepeken vegrehajtott SSIM algoritmusok eredmenyenek az atlaga.");
 
 	ImGui::Text("Az SSIM szine: "); ImGui::SameLine();
 	ImGui::RadioButton("Fekete-Feher", &ssimColor, 0); ImGui::SameLine();
@@ -830,14 +789,14 @@ void Image2SSIM::editableDrawImage() {
 	ImGui::RadioButton("Piros", &ssimColor, 3);  ImGui::SameLine();
 	ImGui::RadioButton("Osszes szin", &ssimColor, 4);	ImGui::SameLine();
 	ImGui::RadioButton("Heatmap", &ssimColor, 5);
-	ShowHelpMarker("Itt tudod kivalasztani az SSIM kep szinet/stilusat.");
+	RegularModify::ShowHelpMarker("Itt tudod kivalasztani az SSIM kep szinet/stilusat.");
 
 	ImGui::Text("Az SSIM szeletek merete:");
 	ImGui::SameLine();
 	RegularModify::CursorPos(200);
 	ImGui::PushItemWidth(100);
 	ImGui::InputInt("##Size", &ssimSize, 0);
-	ShowHelpMarker("Az SSIM algoritmus hanyszor hanyas szeletekben szamoljon.");
+	RegularModify::ShowHelpMarker("Az SSIM algoritmus hanyszor hanyas szeletekben szamoljon.");
 
 	ImGui::NewLine();
 	ImGui::PopItemWidth();
@@ -951,28 +910,28 @@ void Image2SSIM::SSIMSurface() {
 				ssimGrey = SSIMmethod(colorVect, 0);
 				ssimOsszeg += ssimGrey;
 				num++;
-				seged = (Uint8)((ssimGrey + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimGrey) * 255);
 				putColor = (seged << 24) + (seged << 16) + (seged << 8);
 				break;
 			case 1:
 				ssimRed = SSIMmethod(colorVect, 1);
 				ssimOsszeg += ssimRed;
 				num++;
-				seged = (Uint8)((ssimRed + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimRed) * 255);
 				putColor = (seged << 24) + (seged << 16) + (255 << 8); //fix
 				break;
 			case 2:
 				ssimGreen = SSIMmethod(colorVect, 2);
 				ssimOsszeg += ssimGreen;
 				num++;
-				seged = (Uint8)((ssimGreen + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimGreen) * 255);
 				putColor = (seged << 24) + (255 << 16) + (seged << 8);
 				break;
 			case 3:
 				ssimBlue = SSIMmethod(colorVect, 3);
 				ssimOsszeg += ssimBlue;
 				num++;
-				seged = (Uint8)((ssimBlue + 1.0) * 255 / 2);
+				seged = (Uint8)((ssimBlue) * 255);
 				putColor = (255 << 24) + (seged << 16) + (seged << 8);
 				break;
 			case 4:
@@ -985,18 +944,17 @@ void Image2SSIM::SSIMSurface() {
 				ssimBlue = SSIMmethod(colorVect, 3);
 				ssimOsszeg += ssimBlue;
 				num++;
-				putColor = ((Uint8)((ssimRed + 1.0) * 255 / 2) << 24) + ((Uint8)((ssimGreen + 1.0) * 255 / 2) << 16) + ((Uint8)((ssimBlue + 1.0) * 255 / 2) << 8);
+				putColor = ((Uint8)((ssimRed) * 255) << 24) + ((Uint8)((ssimGreen) * 255) << 16) + ((Uint8)((ssimBlue) * 255) << 8);
 				break;
 			case 5:
 				ssimGrey = SSIMmethod(colorVect, 0);
 				ssimOsszeg += ssimGrey;
 				num++;
-				putColor = heatmapColor(ssimGrey);
+				putColor = RegularModify::heatmapColor(ssimGrey);
 				break;
 			}
 			//red 0 0 255   green 0 255 0   blue 255 0 0     
-			//r = -y -m	, g = -y -c , b = -m -c
-			//Uint8 ymc = (Uint8)((ssimValue + 1.0) * 255 / 2); 
+			//r = -y -m	, g = -y -c , b = -m -c 
 
 			for (int i = 0; i < ssimSize; i++) {
 				for (int j = 0; j < ssimSize; j++) {
@@ -1015,7 +973,7 @@ void Image2SSIM::SSIMSurface() {
 
 }
 
-float Image2SSIM::SSIMmethod(std::vector<std::vector<colorsStruckt>> window, /*std::vector<std::vector<colorsStruckt>> window2,*/ int currCol) { //black and white + stuff
+float Image2SSIM::SSIMmethod(std::vector<std::vector<colorsStruckt>> window, /*std::vector<std::vector<colorsStruckt>> window2,*/ int currCol) { 
 
 	float mean1 = 0.f;
 	float mean2 = 0.f;
@@ -1154,12 +1112,6 @@ void Image2Merge::plotLineMerge(int x, int y) {
 	}
 }
 
-/*void Image::loadImage(char* s) {
-	SDL_FreeSurface(surface);
-	Load(s);
-	textureFromSurface();
-}*/
-
 
 void SurfaceModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
@@ -1256,14 +1208,61 @@ void RegularModify::CursorPos(float offset) {
 	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
 }
 
+void RegularModify::ShowHelpMarker(const char* desc)
+{
+	ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(450.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
+}
+
 Uint8 RegularModify::greyScale(Uint32 pixel, SDL_PixelFormat* format) {
 	Uint8 r, g, b;
 	SDL_GetRGB(pixel, format, &r, &g, &b);
 	return 0.299f * r + 0.587f * g + 0.114f * b;
 }
 
-void CMyApp::Resize(int _w, int _h) //??????????????????????????????????????????????????
-{
-	glViewport(0, 0, _w, _h);
+Uint32 RegularModify::heatmapColor(float value) {
 
+	int r, g, b;
+
+	if (value < 0.5f) {
+		// red (255,0,0) -> yellow (255,255,0)
+		r = 255;
+		g = static_cast<int>(255 * (value / 0.5f));  // 0-0.5  1.
+		b = 0;
+	}
+	else {
+		// yellow (255,255,0) -> blue (0,0,255)
+		r = g = static_cast<int>(255 * (1.0f - (value / 0.5f)));
+		//g = static_cast<int>(255 * (1.0f - (value / 1.0f)));
+		b = static_cast<int>(255 * (value / 0.5f));
+	}
+
+	return (r << 24) + (g << 16) + (b << 8);
+}
+
+bool RegularModify::Verify(char* filePath, char* filePathv) {
+
+	SDL_Surface* imageSurface = IMG_Load(filePath);
+	if (!imageSurface) {
+		/*imageSurface = IMG_Load("texture.bmp");
+		strcpy(filePathv, "texture.bmp");*/
+		return false;
+	}
+	else {
+		strcpy(filePathv, filePath);
+	}
+	/*if (!imageSurface) {
+		printf("Failed to load image (also backup image got deleted): %s\n", IMG_GetError());
+		return false;
+	}*/
+	SDL_FreeSurface(imageSurface);
+	return true;
 }

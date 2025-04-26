@@ -7,14 +7,6 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 
-// GLM
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/transform2.hpp>
-
-// mesh
-#include "ObjParser_OGL3.h"
-
 #include <imgui/imgui.h>
 
 
@@ -27,7 +19,8 @@ public:
 	GLuint getTexture() { return texture; }
 	void textureFromSurface();
 
-	void drawImage(int size, bool selected);//rename
+	void drawImage();
+	void drawImage(int size, bool selected);
 	virtual void editableDrawImage();
 
 protected:
@@ -67,11 +60,11 @@ protected:
 	int zoomW;
 	int zoomH;
 	float zoomTimes;
-	int smallW; //smallX
-	int smallH;
+	int smallX; 
+	int smallY;
+	int bigX;
+	int bigY;
 	bool smallChange;
-	int bigW;
-	int bigH;
 	bool upd;
 };
 
@@ -131,7 +124,10 @@ private:
 class RegularModify {
 public:
 	static void CursorPos(float offset);
+	static void ShowHelpMarker(const char* desc);
 	static Uint8 greyScale(Uint32 pixel, SDL_PixelFormat* format);
+	static Uint32 heatmapColor(float value);
+	static bool Verify(char* filePath, char* filePathv);
 
 	//add the save here
 
@@ -153,14 +149,11 @@ public:
 
 	void Resize(int, int);
 
-	//static??
-	bool Verify(char* filePath, char* filePathv, int noErr);
-
-	std::vector<Image> imageVec;
-	std::vector<bool> boolVec; //not needed
-	std::vector<int> selectedImageVec;
 
 protected:
+
+	std::vector<Image> imageVec;
+	std::vector<int> selectedImageVec;
 
 	enum ImageEnum {
 		SEMMIENUM,
@@ -177,7 +170,10 @@ protected:
 
 	ImGuiWindowFlags window_flags;
 
-	bool currentError[5]; //check
+	bool currentErrors[2]; 
+	/*	0 - betoltes: hibas eleresi utvonal
+	*	1 - mentes: hibas eleresi utvonal
+	*/
 
 	char stradd[128];
 	char straddverified[128];

@@ -147,7 +147,7 @@ void CMyApp::Render()
 	imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 	ImGui::NewLine(); RegularModify::CursorPos(20); ImGui::Text("FoldersIms: ");
 	imFo->Scale = 1.f;	ImGui::PopFont();
-	RegularModify::ShowHelpMarker("The loaded folders will appear here. Click on them to select them."); ImGui::NewLine();
+	RegularModify::ShowHelpMarker("The loaded images will appear here. Click on them to select them."); ImGui::NewLine();
 
 	if (imfVec.size() > 0) {
 
@@ -191,7 +191,7 @@ void CMyApp::Render()
 		ImGui::PopStyleVar(2);
 	}
 	else {
-		RegularModify::CursorPos(20); ImGui::Text("No loaded folder.");
+		RegularModify::CursorPos(20); ImGui::Text("No loaded image.");
 		ImGui::NewLine();
 	}
 
@@ -214,7 +214,7 @@ void CMyApp::Render()
 				ImGui::PushStyleColor(ImGuiCol_HeaderActive, Colors[ColorEnum::HEADER_ACTIVE]);
 				ImGui::PushStyleColor(ImGuiCol_Text, Colors[ColorEnum::TEXT_DARK]);
 
-				if (ImGui::CollapsingHeader("Selected foldersimages in full size", ImGuiTreeNodeFlags_DefaultOpen)) {
+				if (ImGui::CollapsingHeader("Selected images in full size", ImGuiTreeNodeFlags_DefaultOpen)) {
 
 					RegularModify::CursorPos(20);
 					for (int i = 0; i < selectedImFVec.size(); i++) {
@@ -285,26 +285,17 @@ void CMyApp::Render()
 			//	if (imfVec[selectedImFVec[0]].getSurface()->w >= 10 && imfVec[selectedImFVec[0]].getSurface()->h >= 10) {
 					if (ImGui::Button("Magnify", ImVec2(150, 50))) {
 						currentImageEnum = MAGNIFYENUM;
-						//if (selectedImFVec.size() == 1) {
-							if (imfVec[selectedImFVec[0]].iof == iofImage) {
-								im1mag.setImage(imfVec[selectedImFVec[0]].im);
-								im1mag.Reset();
-								im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].im);
-							}
-							else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
-								im1mag.setImage(imfVec[selectedImFVec[0]].f.images[0]);
-								im1mag.Reset();
-								im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].f.images[0]);
-							}
-						/* }
-						else {
 
-
-
-							im1mag.setImage(segedFolder.images[0]);
+						if (imfVec[selectedImFVec[0]].iof == iofImage) {
+							im1mag.setImage(imfVec[selectedImFVec[0]].im);
 							im1mag.Reset();
-							im1mag.MagnifyMethod(segedFolder.images[0]);
-						}*/
+							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].im);
+						}
+						else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+							im1mag.setImage(imfVec[selectedImFVec[0]].f.images[0]);
+							im1mag.Reset();
+							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].f.images[0]);
+						}
 					}
 			//	}
 			/*	else {
@@ -327,7 +318,6 @@ void CMyApp::Render()
 
 			if (selectedImFVec.size() == 2) {
 
-				//RegularModify::CursorPos(20);
 				if (ImGui::Button("SSIM", ImVec2(150, 50))) {
 					currentImageEnum = SSIMENUM;
 					im2ssim.setImage(imageVec[selectedImageVec[0]]);
@@ -393,23 +383,25 @@ void CMyApp::Render()
 
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo); RegularModify::CursorPos(20);
+
+				//--------button
+
 				if (ImGui::Button("Load##stradd", ImVec2(150, 50))) {
 					switch (im0load.getLoadType())
 					{
 					case Image0FromFile::loadTypeEnum::PICTURE :{
 
 						if (RegularModify::Verify(stradd, straddverified)) {
-							Image sizeVerify = Image0FromFile::Load(straddverified);
-							if (sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
-								imageVec.push_back(sizeVerify);
+							Image sizeVerify = Image0FromFile::Load(straddverified); //fix!!
+							if (sizeVerify.getSurface() != nullptr && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
 								ImageFolder seged;
-								seged.im = Image0FromFile::Load(straddverified);
+								seged.im = sizeVerify; //Image0FromFile::Load(straddverified);
 								seged.iof = iofImage;
 								imfVec.push_back(seged);
 								currentErrors[0] = false;
 							}
 							else {
-								//errors !!!!!!!!!!!!!!!!!!!!!
+								//errors 
 							}
 							
 						}
@@ -421,11 +413,10 @@ void CMyApp::Render()
 
 					case Image0FromFile::loadTypeEnum::FOLDER :{
 
+						Folder fold;
 						std::string path = stradd;
-						std::string path2 = stradd;
 						path += "/*";
-
-						DWORD dwError = 0;
+						std::string path2 = stradd;
 
 						WIN32_FIND_DATAA ffd;
 						HANDLE hFind = FindFirstFileA(path.c_str(), &ffd);
@@ -442,31 +433,32 @@ void CMyApp::Render()
 							char* cstr = new char[seged.size() + 1];
 							std::strcpy(cstr, seged.c_str());
 
-							if (RegularModify::Verify(cstr, straddverified)) { //do it better!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-								if (!imFold.Load(straddverified)) {
-									//error!!!!!!
+							if (RegularModify::Verify(cstr, straddverified)) {
+								if (!fold.Load(straddverified)) {
+									//error
 								}
-								std::cout << cstr << std::endl;
+								else {
+									std::cout << cstr << std::endl;
+								}
 							}
 							delete[] cstr;
 						}
 						FindClose(hFind);
 
-						if (imFold.images.size() == 0) {
-							//error!!!!!!!!!!
+						if (fold.images.size() == 0) {
+							//error
 						}
 						else {
 
-							for (Image im : imFold.images) {
+							for (Image im : fold.images) {
 								im.textureFromSurface();
 							}
 							
-							imFold.createIconImageFromImages();
+							fold.createIconImageFromImages();
 
 							ImageFolder seged;
-							seged.f = imFold;
+							seged.f = fold;
 							seged.iof = iofFolder;
-							imFold.images[0].textureFromSurface();
 							imfVec.push_back(seged);
 
 						}
@@ -616,6 +608,8 @@ void CMyApp::Render()
 			ImGui::EndChild();
 			ImGui::NewLine();
 
+			//--------button
+
 			ImGui::BeginChild("EndButtons_1", ImVec2(max(im1mag.imOut.getSurface()->w, 360), 80));
 				ImGui::NewLine();
 				RegularModify::CursorPos(20);
@@ -626,8 +620,9 @@ void CMyApp::Render()
 				ImGui::PushFont(imFo);
 				if (ImGui::Button("Load##stradd", ImVec2(150, 50))) {
 
-					// this or exit on betoltes
+					//image
 					if (selectedImFVec.size() == 1 && imfVec[selectedImFVec[0]].iof==iofImage) {
+						
 						SDL_Surface* source = im1mag.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
@@ -640,53 +635,75 @@ void CMyApp::Render()
 
 						ImageFolder imfseged;
 						imfseged.iof = iofImage;
-						imfseged.im = imseged; //imseged;
+						imfseged.im = imseged;
 
 						imfVec.push_back(imfseged);
+
+						/*//+ exit on load
+						Image imseged;
+						imseged.setSurface(im1mag.imOut.getSurface());
+						imseged.textureFromSurface();
+						ImageFolder imfseged;
+						imfseged.iof = iofImage;
+						imfseged.im = imseged;
+
+						imfVec.push_back(imfseged);*/
+
 					}
+
+					//folder !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! recently changed, if error its probably here
 					else {
 						Folder segedFolder;
+						int offset = 0;
 						for (int i = 0; i < selectedImFVec.size();i++) {
-							if (imfVec[selectedImFVec[0]].iof == iofImage) {
-								segedFolder.Append(imfVec[selectedImFVec[0]].im);
+							if (imfVec[selectedImFVec[i]].iof == iofImage) {
+								segedFolder.Append(imfVec[selectedImFVec[i]].im);
+								offset++;
 							}
-							else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
-								segedFolder.Append(imfVec[selectedImFVec[0]].f);
-							}
-						}
+							else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
+								segedFolder.Append(imfVec[selectedImFVec[i]].f);
 
-						Folder segedFolderFinal;
-						for (Image im : segedFolder.images) {
-							 {		
-								im1mag.setImage(im);
-								if (im.getSurface()->w >= im1mag.imOut.getSurface()->w && im.getSurface()->h >= im1mag.imOut.getSurface()->h){
-									im1mag.MagnifyMethod(im);
+								for (int j = 0; j < imfVec[selectedImFVec[i]].f.storedOperationsVector.size();j++) {
+									for (int k = 0; k < imfVec[selectedImFVec[i]].f.storedOperationsVector[j].affectedElements.size();k++) {
+										imfVec[selectedImFVec[i]].f.storedOperationsVector[j].affectedElements[k] += offset;
+									}
+									segedFolder.storedOperationsVector.push_back(imfVec[selectedImFVec[i]].f.storedOperationsVector[j]);
 								}
-								else {
-									//error!!!!!!!!!!!!!!
-								}
-
-								SDL_Surface* source = im1mag.imOut.getSurface();
-								SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
-									source->w, source->h, source->format->BitsPerPixel, source->format->format);
-								if (destination != nullptr) {
-									SDL_BlitSurface(source, nullptr, destination, nullptr);
-								}
-								Image imseged;
-								imseged.setSurface(destination);
-								imseged.textureFromSurface();
-
-								segedFolderFinal.images.push_back(imseged);
+								offset += imfVec[selectedImFVec[i]].f.images.size();
 							}
 						}
-						segedFolderFinal.createIconImageFromImages();
+						//err end
+						SDL_Surface* source = im1mag.imOut.getSurface();
+						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+							source->w, source->h, source->format->BitsPerPixel, source->format->format);
+						if (destination != nullptr) {
+							SDL_BlitSurface(source, nullptr, destination, nullptr);
+						}
+						Image imseged;
+						imseged.setSurface(destination);
+						imseged.textureFromSurface();
+
+						segedFolder.images[0] = imseged;
+						segedFolder.createIconImageFromImages();
+
+						Folder::storedOperation segedOp;
+						segedOp.ote = Folder::oteImage1Magnify;
+						segedOp.i1m = im1mag;
+
+						//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! changed as well
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+							segedOp.affectedElements.push_back(i);
+						}
+
+						segedFolder.storedOperationsVector.push_back(segedOp);
 
 						ImageFolder imfseged;
 						imfseged.iof = iofFolder;
-						imfseged.f = segedFolderFinal;
+						imfseged.f = segedFolder;
 
 						imfVec.push_back(imfseged);
 
+						/*
 						if (imfVec[selectedImFVec[0]].iof == iofImage) {
 							im1mag.setImage(imfVec[selectedImFVec[0]].im);
 							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].im);
@@ -694,7 +711,7 @@ void CMyApp::Render()
 						else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
 							im1mag.setImage(imfVec[selectedImFVec[0]].f.images[0]);
 							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].f.images[0]);
-						}
+						}*/
 					}
 					ImGui::OpenPopup("Betoltes##Pop"); //!!!!!!!!!!!!!!
 				}
@@ -718,23 +735,28 @@ void CMyApp::Render()
 			SetBasicUI();
 			ImGui::PushStyleColor(ImGuiCol_FrameBg, Colors[ColorEnum::INPUT_BG]);
 
-			ImGui::BeginChild("Name2", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 65), false);
+			ImGui::BeginChild("Name2", ImVec2(max(imfVec[selectedImFVec[0]].iof == iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, 360), 65), false);
 
 				imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
-				ImGui::NewLine(); RegularModify::CursorPos(20); ImGui::Text(static_cast<Folder*>(&imageVec[selectedImageVec[0]]) ? "SaveL" : "SaveI");
+				ImGui::NewLine(); RegularModify::CursorPos(20); ImGui::Text("Save");
 				imFo->Scale = 1.f;	ImGui::PopFont();
 
 			ImGui::EndChild();
 
 			ImGui::NewLine();
-			ImGui::Image((void*)(intptr_t)imageVec[selectedImageVec[0]].getTexture(), ImVec2(imageVec[selectedImageVec[0]].getSurface()->w, imageVec[selectedImageVec[0]].getSurface()->h));
+			if (imfVec[selectedImFVec[0]].iof == iofImage) {
+				ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].im.getTexture(), ImVec2(imfVec[selectedImFVec[0]].im.getSurface()->w, imfVec[selectedImFVec[0]].im.getSurface()->h));
+			}
+			else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+				ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].f.images[0].getTexture(), ImVec2(imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, imfVec[selectedImFVec[0]].f.images[0].getSurface()->h));
+			}
 			ImGui::NewLine();
 
-			ImGui::BeginChild("Save", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 75), false);
+			ImGui::BeginChild("Save", ImVec2(max(imfVec[selectedImFVec[0]].iof==iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, 360), 75), false);
 
 				ImGui::NewLine();
 				RegularModify::CursorPos(20); ImGui::Text("Path:");
-				ImGui::PushItemWidth(max(imageVec[selectedImageVec[0]].getSurface()->w - 40, 260));
+				ImGui::PushItemWidth(max(imfVec[selectedImFVec[0]].iof == iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w -40 : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w - 40, 260));
 				RegularModify::CursorPos(20); ImGui::InputText("##SavePath", outstr, IM_ARRAYSIZE(outstr));
 				ImGui::PopItemWidth();
 				if (currentErrors[1]) {
@@ -747,7 +769,7 @@ void CMyApp::Render()
 
 			ImGui::NewLine();
 
-			ImGui::BeginChild("EndButtons_2", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 80));
+			ImGui::BeginChild("EndButtons_2", ImVec2(max(imfVec[selectedImFVec[0]].iof == iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, 360), 80));
 
 				ImGui::NewLine();
 				RegularModify::CursorPos(20);
@@ -757,24 +779,89 @@ void CMyApp::Render()
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo);
 				if (ImGui::Button("Save", ImVec2(150, 50))) {
-					struct stat sb;
-					if (stat(outstr, &sb) != 0) {
-						currentErrors[1] = true;
-					}
-					else {
-						IMG_SavePNG(imageVec[selectedImageVec[0]].getSurface(), outstr);
-						currentImageEnum = SEMMIENUM;
-						currentErrors[1] = false;
 
-						ImGui::OpenPopup("Mentes##Pop");
+					struct stat sb;
+					//incorrect path (there isn't a file with this name already)
+					if (stat(outstr, &sb) != 0) {
+						if (selectedImFVec.size() == 1 && imfVec[selectedImFVec[0]].iof == iofImage) {
+							if (IMG_SavePNG(imfVec[selectedImFVec[0]].im.getSurface(), outstr) == 0) {
+								if (stat(outstr, &sb) == 0) { //check, might not needed
+									currentImageEnum = SEMMIENUM;
+									currentErrors[1] = false;
+									ImGui::OpenPopup("Mentes##Pop");
+								}
+								else {
+									currentErrors[1] = true;
+								}
+							}
+							else {
+								currentErrors[1] = true;
+							}
+						}
+						else {
+							currentErrors[1] = true;
+						}
+					}
+					//folder path  !!!!!!!!!!!!!!!!!!!!!!!!!!check if name isnt already taken
+					else if (sb.st_mode & S_IFDIR) {
+						if (selectedImFVec.size() == 1 && imfVec[selectedImFVec[0]].iof == iofImage) {
+							currentErrors[1] = true;
+						}
+						else {
+							int n = 1;
+							std::string path = outstr;
+
+							for (int i = 0; i < selectedImFVec.size(); i++) {
+								if (imfVec[selectedImFVec[i]].iof == iofImage) {
+
+									std::string seged = path + "/image" + std::to_string(n) + ".png";
+									char* cstr = new char[seged.size() + 1];
+									std::strcpy(cstr, seged.c_str());
+
+									IMG_SavePNG(imfVec[selectedImFVec[i]].im.getSurface(), cstr);
+
+									delete[] cstr;
+
+									n++;
+								}
+								else if (imfVec[selectedImFVec[i]].iof == iofFolder) { //shorten stuff
+									for (int j = 0; j < imfVec[selectedImFVec[i]].f.images.size(); j++) {
+
+										std::string seged = path + "/image" + std::to_string(n) + ".png";
+										char* cstr = new char[seged.size() + 1];
+										std::strcpy(cstr, seged.c_str());
+
+										//----------------------------------------------------------
+
+										//im1sav.setImage(imfVec[selectedImFVec[i]].f.images[j]);
+										im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, cstr, j);
+
+										//freeup imseged
+
+										//----------------------------------------------------------
+
+										delete[] cstr;
+
+										n++;
+									}
+								}
+							}
+							currentImageEnum = SEMMIENUM;
+							currentErrors[1] = false;
+
+							ImGui::OpenPopup("Mentes##Pop");
+						}
+					}
+					//already existing image path
+					else {
+						currentErrors[1] = true;
 					}
 				}
 
-				ImGui::SameLine(); RegularModify::CursorPos(max(170, imageVec[selectedImageVec[0]].getSurface()->w - 170));
+				ImGui::SameLine(); RegularModify::CursorPos(max(170, imfVec[selectedImFVec[0]].iof == iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w -170 : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w - 170));
 				Back();
 
-				imFo->Scale = 1.f;
-				ImGui::PopFont();
+				imFo->Scale = 1.f; ImGui::PopFont();
 				ImGui::PopStyleColor(3);
 
 			ImGui::EndChild();
@@ -1057,8 +1144,33 @@ void CMyApp::PushStyleColorGreenButton() {
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Colors[ColorEnum::BUTTON_GREEN_ACTIVE]);
 }
 
+Image::~Image(void) {
+	/*
+	if (surface != nullptr) {
+		SDL_FreeSurface(surface);
+		surface = nullptr;
+	}
+	if (texture != 0) {
+		glDeleteTextures(1, &texture);
+		texture = 0;
+	}
+	printf("d");*/
+}
+
+void Image::setSurface(SDL_Surface* surface) {
+	if (this->surface != nullptr) {
+		//SDL_FreeSurface(this->surface);
+		printf("s");
+	}
+	this->surface = surface;
+}
 
 void Image::textureFromSurface() {
+	if (texture!=0) {
+		glDeleteTextures(1, &texture); 
+		printf("t");
+	}
+
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
@@ -1074,6 +1186,8 @@ void Image::textureFromSurface() {
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	texture = textureID;
+
+	glDeleteTextures(1, &format);
 }
 
 void Image::drawImage() {
@@ -1106,7 +1220,7 @@ Folder::Folder(void){}
 
 bool Folder::Load(char* s) {
 	Image sizeVerify = Image0FromFile::Load(s);
-	if (sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
+	if (sizeVerify.getSurface()!=NULL && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
 		images.push_back(sizeVerify);
 		return true;
 	}
@@ -1166,6 +1280,7 @@ Image1::Image1(Image im) {
 }*/
 
 void Image1::setImage(Image im) {
+
 	SDL_Surface* source = im.getSurface();
 	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 		source->w, source->h, source->format->BitsPerPixel, source->format->format);
@@ -1174,11 +1289,8 @@ void Image1::setImage(Image im) {
 		SDL_BlitSurface(source, nullptr, destination, nullptr);
 	}
 
-	Image imseged;
-	imseged.setSurface(destination);
-	imseged.textureFromSurface();
-
-	imOut = imseged;
+	imOut.setSurface(destination);
+	imOut.textureFromSurface();
 }
 
 Image1Magnify::Image1Magnify(void){
@@ -1278,6 +1390,7 @@ void Image1Magnify::editableDrawImage(Image im) {
 void Image1Magnify::MagnifyMethod(Image im) {
 	Uint32 red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
 
+	//can be moved out
 	//draw bg
 	for (int i = 0; i < imOut.getSurface()->w; i++) {
 		for (int j = 0; j < imOut.getSurface()->h; j++) {
@@ -1342,6 +1455,45 @@ void Image1Magnify::MagnifyMethod(Image im) {
 	}
 
 	imOut.textureFromSurface();
+}
+
+void Image1Save::SaveFolder(Folder f, char* cstr, int j) {
+	SDL_Surface* source = f.images[j].getSurface();
+	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+		source->w, source->h, source->format->BitsPerPixel, source->format->format);
+	if (destination != nullptr) {
+		SDL_BlitSurface(source, nullptr, destination, nullptr);
+	}
+	imOut.setSurface(destination);
+	
+
+	if (j != 0) {
+		for (int k = 0; k < f.storedOperationsVector.size(); k++) {
+			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! edited
+			if (std::find(f.storedOperationsVector[k].affectedElements.begin(), f.storedOperationsVector[k].affectedElements.end(), j) != f.storedOperationsVector[k].affectedElements.end()) {
+				switch (f.storedOperationsVector[k].ote) {
+					case Folder::oteImage1Magnify: {
+
+						if (f.images[0].getSurface()->w <= f.images[j].getSurface()->w && f.images[0].getSurface()->h <= f.images[j].getSurface()->h) {
+							f.storedOperationsVector[k].i1m.setImage(imOut);
+							f.storedOperationsVector[k].i1m.MagnifyMethod(imOut);
+							imOut = f.storedOperationsVector[k].i1m.imOut;
+						}
+
+						else {
+							//error
+						}
+						break;
+					}
+					case Folder::oteImage2SSIM: {
+						break;
+					}
+				}
+			}
+
+		}
+	}
+	IMG_SavePNG(imOut.getSurface(), cstr);
 }
 
 Image2::Image2(void) {}

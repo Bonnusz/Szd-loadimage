@@ -13,10 +13,11 @@
 
 class Image {
 public:
-	/*~Image(void);*/
+	Image() : surface(nullptr), texture(0) {}
+	~Image(void);
 
 	SDL_Surface* getSurface() { return surface; }
-	void setSurface(SDL_Surface* surface) { this->surface = surface; }
+	void setSurface(SDL_Surface* surface);
 	GLuint getTexture() { return texture; }
 	void textureFromSurface();
 
@@ -25,25 +26,15 @@ public:
 	virtual void editableDrawImage();
 
 protected:
-	SDL_Surface* surface;
+	SDL_Surface* surface = nullptr;
 	GLuint texture;
 
 };
 
-// extra
-class Folder : public Image{
-public:
-	Folder(void);
-	bool Load(char* s);
-	void Append(Image app);
-	void Append(Folder app);
-	void createIconImageFromImages();
 
-	std::vector<Image> images;
-};
+class Operations{};
 
-
-class Image0 {
+class Image0 : public Operations{
 
 };
 
@@ -60,7 +51,7 @@ protected:
 	int loadType;
 };
 
-class Image1 {
+class Image1 : public Operations {
 public:
 	Image1(void);
 	//Image1(Image im);
@@ -101,7 +92,7 @@ protected:
 	bool upd;
 };
 
-class Image2{
+class Image2 : public Operations {
 public:
 	Image2(void);
 	//Image2(Image im1,Image im2);
@@ -156,6 +147,26 @@ protected:
 	float slope;
 	bool upd;
 	int ux, uy;
+};
+
+class Folder : public Image {
+public:
+	Folder(void);
+	bool Load(char* s);
+	void Append(Image app);
+	void Append(Folder app);
+	void createIconImageFromImages();
+
+	enum operationTypeEnum { oteImage1Magnify, oteImage2SSIM };
+	struct storedOperation { Image1Magnify i1m; Image2SSIM i2s; operationTypeEnum ote = oteImage1Magnify; std::vector<int> affectedElements; };
+	std::vector<storedOperation> storedOperationsVector;
+
+	std::vector<Image> images;
+};
+
+class Image1Save : public Image1 {
+public:
+	void SaveFolder(Folder f, char* cstr, int j);
 };
 
 class SurfaceModify {
@@ -279,8 +290,9 @@ protected:
 	char outstr[128];
 	
 	Image0FromFile im0load;
+	Image1Save im1sav;
 	Image1Magnify im1mag;
 	Image2SSIM im2ssim;
 	Image2Merge im2merge;
-	Folder imFold;
+	//Folder imFold;
 };

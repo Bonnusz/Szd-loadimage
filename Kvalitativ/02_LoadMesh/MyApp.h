@@ -31,6 +31,16 @@ protected:
 
 };
 
+class Folder : public Image {
+public:
+	Folder(void);
+	bool Load(char* s);
+	void Append(Image app);
+	void Append(Folder app);
+	void createIconImageFromImages();
+
+	std::vector<Image> images;
+};
 
 class Operations{};
 
@@ -92,13 +102,18 @@ protected:
 	bool upd;
 };
 
+enum imageOrFolder { iofImage, iofFolder };
+struct ImageFolder { Image im; Folder f; imageOrFolder iof = iofImage; };
+
 class Image2 : public Operations {
 public:
 	Image2(void);
 	//Image2(Image im1,Image im2);
 
 	void setImage(Image im);
+	void setImageFolder(ImageFolder imf) { storediof = imf; };
 
+	ImageFolder storediof;
 	Image imOut;
 protected:
 };
@@ -134,7 +149,7 @@ public:
 	Image2Merge(void);
 	//Image2Merge(Image im1, Image im2);
 
-	void plotLineMerge(int x, int y, Image im1, Image im2);
+	void plotLineMerge(int x, int y, Image im1, Image im2); //rm x y
 	void editableDrawImage(Image im1, Image im2);
 	void Reset();
 
@@ -143,30 +158,24 @@ public:
 	int getUx() { return ux; }
 	int getUy() { return uy; }
 
+	bool swap = false;
+
 protected:
 	float slope;
 	bool upd;
 	int ux, uy;
 };
 
-class Folder : public Image {
+class StoredOperaionsClass {
 public:
-	Folder(void);
-	bool Load(char* s);
-	void Append(Image app);
-	void Append(Folder app);
-	void createIconImageFromImages();
-
-	enum operationTypeEnum { oteImage1Magnify, oteImage2SSIM };
-	struct storedOperation { Image1Magnify i1m; Image2SSIM i2s; operationTypeEnum ote = oteImage1Magnify; std::vector<int> affectedElements; };
-	std::vector<storedOperation> storedOperationsVector;
-
-	std::vector<Image> images;
+	enum operationTypeEnum { oteImage1Magnify, oteImage2SSIM,oteImage2Merge };
+	struct storedOperation { Image1Magnify i1m; Image2SSIM i2s; Image2Merge i2m; operationTypeEnum ote = oteImage1Magnify; std::vector<int> affectedElements; };
+	std::vector<storedOperation> storedOperationsElement;
 };
 
 class Image1Save : public Image1 {
 public:
-	void SaveFolder(Folder f, char* cstr, int j);
+	void SaveFolder(Folder f, char* cstr, int j, StoredOperaionsClass storedOperationsElement);
 };
 
 class SurfaceModify {
@@ -193,8 +202,6 @@ public:
 
 };
 
-
-
 class CMyApp
 {
 public:
@@ -219,17 +226,11 @@ protected:
 
 	ImFont* arial; //delete?
 	//ImFont* notosans; //delete?
-	enum imageOrFolder { iofImage, iofFolder };
-	struct ImageFolder { Image im; Folder f; imageOrFolder iof = iofImage; };
+
 	std::vector<ImageFolder> imfVec;
 	std::vector<int> selectedImFVec;
 
-
-	std::vector<Image> imageVec;
-	std::vector<int> selectedImageVec;
-
-	std::vector<Folder> folderVec;
-	std::vector<int> selectedFolderVec;
+	std::vector<StoredOperaionsClass> storedOperationsVector;
 
 	enum ColorEnum {
 		TEXT_LIGHT,

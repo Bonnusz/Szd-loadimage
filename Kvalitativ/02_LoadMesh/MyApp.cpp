@@ -318,22 +318,65 @@ void CMyApp::Render()
 
 			if (selectedImFVec.size() == 2) {
 
-				if (ImGui::Button("SSIM", ImVec2(150, 50))) {
-					currentImageEnum = SSIMENUM;
-					im2ssim.setImage(imageVec[selectedImageVec[0]]);
-					im2ssim.Reset();
-					im2ssim.SSIMSurface(imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
-				}
-				ImGui::NextColumn();
+				if ((imfVec[selectedImFVec[0]].iof == iofImage && imfVec[selectedImFVec[1]].iof == iofImage && imfVec[selectedImFVec[0]].im.getSurface()->w == imfVec[selectedImFVec[1]].im.getSurface()->w && imfVec[selectedImFVec[0]].im.getSurface()->h == imfVec[selectedImFVec[1]].im.getSurface()->h) ||
+					(imfVec[selectedImFVec[0]].iof == iofImage && imfVec[selectedImFVec[1]].iof == iofFolder && imfVec[selectedImFVec[0]].im.getSurface()->w == imfVec[selectedImFVec[1]].f.images[0].getSurface()->w && imfVec[selectedImFVec[0]].im.getSurface()->h == imfVec[selectedImFVec[1]].f.images[0].getSurface()->h) ||
+					(imfVec[selectedImFVec[0]].iof == iofFolder && imfVec[selectedImFVec[1]].iof == iofImage && imfVec[selectedImFVec[0]].f.images[0].getSurface()->w == imfVec[selectedImFVec[1]].im.getSurface()->w && imfVec[selectedImFVec[0]].f.images[0].getSurface()->h == imfVec[selectedImFVec[1]].im.getSurface()->h) ||
+					(imfVec[selectedImFVec[0]].iof == iofFolder && imfVec[selectedImFVec[1]].iof == iofFolder && imfVec[selectedImFVec[0]].f.images[0].getSurface()->w == imfVec[selectedImFVec[1]].f.images[0].getSurface()->w && imfVec[selectedImFVec[0]].f.images[0].getSurface()->h == imfVec[selectedImFVec[1]].f.images[0].getSurface()->h)) {
 
-				if (ImGui::Button("Merge", ImVec2(150, 50))) {
-					currentImageEnum = MERGEENUM;
-					im2merge.setImage(imageVec[selectedImageVec[0]]);
-					im2merge.Reset();
-					im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
-				}
-				ImGui::NextColumn();
 
+					if (ImGui::Button("SSIM", ImVec2(150, 50))) {
+						currentImageEnum = SSIMENUM;
+						if (imfVec[selectedImFVec[0]].iof == iofImage) {
+							im2ssim.setImage(imfVec[selectedImFVec[0]].im);
+							im2ssim.Reset();
+							if (imfVec[selectedImFVec[1]].iof == iofImage) {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].im);
+							}
+							else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].f.images[0]);
+							}
+						}
+						else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+							im2ssim.setImage(imfVec[selectedImFVec[0]].f.images[0]);
+							im2ssim.Reset();
+							if (imfVec[selectedImFVec[1]].iof == iofImage) {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].im);
+							}
+							else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].f.images[0]);
+							}
+						}
+					}
+					ImGui::NextColumn();
+
+					if (ImGui::Button("Merge", ImVec2(150, 50))) {
+						currentImageEnum = MERGEENUM;
+						if (imfVec[selectedImFVec[0]].iof == iofImage) {
+							im2merge.setImage(imfVec[selectedImFVec[0]].im);
+							im2merge.Reset();
+							if (imfVec[selectedImFVec[1]].iof == iofImage) {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(),imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].im);
+							}
+							else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(),imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].f.images[0]);
+							}
+						}
+						else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+							im2merge.setImage(imfVec[selectedImFVec[0]].f.images[0]);
+							im2merge.Reset();
+							if (imfVec[selectedImFVec[1]].iof == iofImage) {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(),imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].im);
+							}
+							else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(),imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].f.images[0]);
+							}
+						}
+					}
+					ImGui::NextColumn();
+				}
+				else {
+					//no match
+				}
 			}
 
 			ImGui::Columns(1);
@@ -398,6 +441,10 @@ void CMyApp::Render()
 								seged.im = sizeVerify; //Image0FromFile::Load(straddverified);
 								seged.iof = iofImage;
 								imfVec.push_back(seged);
+
+								StoredOperaionsClass s;
+								storedOperationsVector.push_back(s);
+
 								currentErrors[0] = false;
 							}
 							else {
@@ -460,6 +507,9 @@ void CMyApp::Render()
 							seged.f = fold;
 							seged.iof = iofFolder;
 							imfVec.push_back(seged);
+
+							StoredOperaionsClass s;
+							storedOperationsVector.push_back(s);
 
 						}
 
@@ -639,6 +689,9 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
+						StoredOperaionsClass s;
+						storedOperationsVector.push_back(s);
+
 						/*//+ exit on load
 						Image imseged;
 						imseged.setSurface(im1mag.imOut.getSurface());
@@ -651,9 +704,10 @@ void CMyApp::Render()
 
 					}
 
-					//folder !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! recently changed, if error its probably here
+					//folder
 					else {
 						Folder segedFolder;
+						StoredOperaionsClass segedStoredOperationsClass;
 						int offset = 0;
 						for (int i = 0; i < selectedImFVec.size();i++) {
 							if (imfVec[selectedImFVec[i]].iof == iofImage) {
@@ -662,17 +716,19 @@ void CMyApp::Render()
 							}
 							else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].f);
+								//segedStoredOperationsClass += storedOperationsVector[i];
 
-								for (int j = 0; j < imfVec[selectedImFVec[i]].f.storedOperationsVector.size();j++) {
-									for (int k = 0; k < imfVec[selectedImFVec[i]].f.storedOperationsVector[j].affectedElements.size();k++) {
-										imfVec[selectedImFVec[i]].f.storedOperationsVector[j].affectedElements[k] += offset;
+								for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
+									segedStoredOperationsClass.storedOperationsElement.push_back(storedOperationsVector[i].storedOperationsElement[j]);
+
+									for (int k = 0; k < storedOperationsVector[i].storedOperationsElement[j].affectedElements.size(); k++) {
+										segedStoredOperationsClass.storedOperationsElement[j].affectedElements[k] += offset;
 									}
-									segedFolder.storedOperationsVector.push_back(imfVec[selectedImFVec[i]].f.storedOperationsVector[j]);
 								}
 								offset += imfVec[selectedImFVec[i]].f.images.size();
 							}
 						}
-						//err end
+
 						SDL_Surface* source = im1mag.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
@@ -682,20 +738,17 @@ void CMyApp::Render()
 						Image imseged;
 						imseged.setSurface(destination);
 						imseged.textureFromSurface();
-
 						segedFolder.images[0] = imseged;
 						segedFolder.createIconImageFromImages();
 
-						Folder::storedOperation segedOp;
-						segedOp.ote = Folder::oteImage1Magnify;
+						StoredOperaionsClass::storedOperation segedOp;
+						segedOp.ote = StoredOperaionsClass::oteImage1Magnify;
 						segedOp.i1m = im1mag;
-
-						//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! changed as well
 						for (int i = 0; i < segedFolder.images.size(); i++) {
 							segedOp.affectedElements.push_back(i);
 						}
-
-						segedFolder.storedOperationsVector.push_back(segedOp);
+						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
+						storedOperationsVector.push_back(segedStoredOperationsClass);
 
 						ImageFolder imfseged;
 						imfseged.iof = iofFolder;
@@ -703,15 +756,6 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						/*
-						if (imfVec[selectedImFVec[0]].iof == iofImage) {
-							im1mag.setImage(imfVec[selectedImFVec[0]].im);
-							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].im);
-						}
-						else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
-							im1mag.setImage(imfVec[selectedImFVec[0]].f.images[0]);
-							im1mag.MagnifyMethod(imfVec[selectedImFVec[0]].f.images[0]);
-						}*/
 					}
 					ImGui::OpenPopup("Betoltes##Pop"); //!!!!!!!!!!!!!!
 				}
@@ -834,7 +878,7 @@ void CMyApp::Render()
 										//----------------------------------------------------------
 
 										//im1sav.setImage(imfVec[selectedImFVec[i]].f.images[j]);
-										im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, cstr, j);
+										im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, cstr,j,storedOperationsVector[selectedImFVec[i]]);
 
 										//freeup imseged
 
@@ -878,7 +922,7 @@ void CMyApp::Render()
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Colors[ColorEnum::BUTTON_BLUE_HOVERED]);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, Colors[ColorEnum::BUTTON_BLUE_ACTIVE]);
 
-			ImGui::BeginChild("Name3", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 65), false);
+			ImGui::BeginChild("Name3", ImVec2(max(im2ssim.imOut.getSurface()->w, 360), 65), false);
 
 				imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 				ImGui::NewLine();
@@ -892,7 +936,7 @@ void CMyApp::Render()
 
 			ImGui::NewLine();
 
-			ImGui::BeginChild("SSIM", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 210), false);
+			ImGui::BeginChild("SSIM", ImVec2(max(im2ssim.imOut.getSurface()->w, 360), 210), false);
 
 				ImGui::NewLine();
 				float segedSsimOsszeg = im2ssim.getSsimOsszeg();
@@ -924,8 +968,8 @@ void CMyApp::Render()
 					if (segedSsimSize < 1) {
 						segedSsimSize = 1;
 					}
-					if (segedSsimSize > fmin(imageVec[selectedImageVec[0]].getSurface()->w / 2, imageVec[selectedImageVec[0]].getSurface()->h / 2)) {
-						segedSsimSize = fmin(imageVec[selectedImageVec[0]].getSurface()->w / 2, imageVec[selectedImageVec[0]].getSurface()->h / 2);
+					if (segedSsimSize > fmin(im2ssim.imOut.getSurface()->w / 2, im2ssim.imOut.getSurface()->h / 2)) {
+						segedSsimSize = fmin(im2ssim.imOut.getSurface()->w / 2, im2ssim.imOut.getSurface()->h / 2);
 					}
 
 					im2ssim.setSsimSize(segedSsimSize);
@@ -936,12 +980,26 @@ void CMyApp::Render()
 				ImGui::PopItemWidth();
 
 				ImGui::PushStyleColor(ImGuiCol_Text, Colors[ColorEnum::TEXT_LIGHT]);
-				RegularModify::CursorPos((imageVec[selectedImageVec[0]].getSurface()->w / 2.0f) - (150.0f / 2.0f));
+				RegularModify::CursorPos((im2ssim.imOut.getSurface()->w / 2.0f) - (150.0f / 2.0f));
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo);
 				if (ImGui::Button("Regenerate", ImVec2(150, 50))) {
-
-					im2ssim.SSIMSurface(imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
+					if (imfVec[selectedImFVec[0]].iof == iofImage) {
+						if (imfVec[selectedImFVec[1]].iof == iofImage) {
+							im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].im);
+						}
+						else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+							im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].f.images[0]);
+						}
+					}
+					else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+						if (imfVec[selectedImFVec[1]].iof == iofImage) {
+							im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].im);
+						}
+						else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+							im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].f.images[0]);
+						}
+					}
 				}
 				imFo->Scale = 1.f;
 				ImGui::PopStyleColor();
@@ -951,7 +1009,9 @@ void CMyApp::Render()
 
 			ImGui::NewLine();
 
-			ImGui::BeginChild("EndButtons_3", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 80));
+			//--------button
+
+			ImGui::BeginChild("EndButtons_3", ImVec2(max(im2ssim.imOut.getSurface()->w, 360), 80));
 				ImGui::NewLine();
 				RegularModify::CursorPos(20);
 
@@ -959,25 +1019,109 @@ void CMyApp::Render()
 
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo);
+
 				if (ImGui::Button("Load##stradd", ImVec2(150, 50))) {
-					
-					// this or exit on betoltes
-					SDL_Surface* source = im2ssim.imOut.getSurface();
-					SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
-						source->w, source->h, source->format->BitsPerPixel, source->format->format);
-					if (destination != nullptr) {
-						SDL_BlitSurface(source, nullptr, destination, nullptr);
+
+					//images
+					if (imfVec[selectedImFVec[0]].iof == iofImage && imfVec[selectedImFVec[1]].iof == iofImage) {
+
+						SDL_Surface* source = im2ssim.imOut.getSurface();
+						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+							source->w, source->h, source->format->BitsPerPixel, source->format->format);
+						if (destination != nullptr) {
+							SDL_BlitSurface(source, nullptr, destination, nullptr);
+						}
+						Image imseged;
+						imseged.setSurface(destination);
+						imseged.textureFromSurface();
+
+						ImageFolder imfseged;
+						imfseged.iof = iofImage;
+						imfseged.im = imseged;
+
+						imfVec.push_back(imfseged);
+
+						StoredOperaionsClass s;
+						storedOperationsVector.push_back(s);
+
 					}
-					Image imseged;
-					imseged.setSurface(destination);
-					imseged.textureFromSurface();
-					
-					imageVec.push_back(imseged);
+
+					//folder (+image/folder)
+					else {
+
+						Folder segedFolder;
+						StoredOperaionsClass segedStoredOperationsClass;
+
+						if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+							segedFolder.Append(imfVec[selectedImFVec[0]].f);
+							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
+						}
+						else if(imfVec[selectedImFVec[0]].iof == iofImage){
+							segedFolder.Append(imfVec[selectedImFVec[1]].f);
+							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
+						}
+
+						SDL_Surface* source = im2ssim.imOut.getSurface();
+						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+							source->w, source->h, source->format->BitsPerPixel, source->format->format);
+						if (destination != nullptr) {
+							SDL_BlitSurface(source, nullptr, destination, nullptr);
+						}
+						Image imseged;
+						imseged.setSurface(destination);
+						imseged.textureFromSurface();
+						segedFolder.images[0] = imseged;
+						segedFolder.createIconImageFromImages();
+
+						//folder + image
+						if ((imfVec[selectedImFVec[0]].iof == iofImage) || (imfVec[selectedImFVec[1]].iof == iofImage)) {
+							Image* im;
+							if (imfVec[selectedImFVec[0]].iof == iofImage) {
+								im = &imfVec[selectedImFVec[0]].im;
+							}
+							else {
+								im = &imfVec[selectedImFVec[1]].im;
+							}
+
+							ImageFolder segedimf;
+							segedimf.iof == iofImage;
+							segedimf.im = *im;
+							im2ssim.setImageFolder(segedimf);
+						}
+
+						//folders
+						else {
+							ImageFolder segedimf;
+							segedimf.iof == iofFolder;
+							//do folders operations !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+							
+							segedimf.f = imfVec[selectedImFVec[1]].f;
+							im2ssim.setImageFolder(segedimf);
+
+							//im2ssim.ifFoldthanOperationsNo = selectedImFVec[1];
+						}
+						
+						StoredOperaionsClass::storedOperation segedOp;
+						segedOp.ote = StoredOperaionsClass::oteImage2SSIM;
+						segedOp.i2s = im2ssim;
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+							segedOp.affectedElements.push_back(i);
+						}
+						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
+						storedOperationsVector.push_back(segedStoredOperationsClass);
+
+						ImageFolder imfseged;
+						imfseged.iof = iofFolder;
+						imfseged.f = segedFolder;
+
+						imfVec.push_back(imfseged);
+
+					}
 
 					ImGui::OpenPopup("Betoltes##Pop");
 				}
 
-				ImGui::SameLine(); RegularModify::CursorPos(max(170, imageVec[selectedImageVec[0]].getSurface()->w - 170));
+				ImGui::SameLine(); RegularModify::CursorPos(max(170, im2ssim.imOut.getSurface()->w - 170));
 				Back();
 
 				imFo->Scale = 1.f;
@@ -995,7 +1139,7 @@ void CMyApp::Render()
 			SetBasicUI();
 			ImGui::PushStyleColor(ImGuiCol_FrameBg, Colors[ColorEnum::INPUT_BG]);
 			
-			ImGui::BeginChild("Name4", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 65), false);
+			ImGui::BeginChild("Name4", ImVec2(max(im2merge.imOut.getSurface()->w, 360), 65), false);
 
 				imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 				ImGui::NewLine(); RegularModify::CursorPos(20); ImGui::Text("Merge");
@@ -1005,21 +1149,44 @@ void CMyApp::Render()
 
 			ImGui::NewLine();
 
-			im2merge.editableDrawImage(imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
+			Image* im1;
+			Image* im2;
+			if (imfVec[selectedImFVec[0]].iof == iofImage) {
+				if (imfVec[selectedImFVec[1]].iof == iofImage) {
+					im1 = &imfVec[selectedImFVec[0]].im;
+					im2 = &imfVec[selectedImFVec[1]].im;
+				}
+				else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+					im1 = &imfVec[selectedImFVec[0]].im;
+					im2 = &imfVec[selectedImFVec[1]].f.images[0];
+				}
+			}
+			else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+				if (imfVec[selectedImFVec[1]].iof == iofImage) {
+					im1 = &imfVec[selectedImFVec[0]].f.images[0];
+					im2 = &imfVec[selectedImFVec[1]].im;
+				}
+				else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
+					im1 = &imfVec[selectedImFVec[0]].f.images[0];
+					im2 = &imfVec[selectedImFVec[1]].f.images[0];
+				}
+			}
+
+			im2merge.editableDrawImage(*im1, *im2);
 
 			ImGui::NewLine();
 
-			ImGui::BeginChild("Merge", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 70), false);
+			ImGui::BeginChild("Merge", ImVec2(max(im2merge.imOut.getSurface()->w, 360), 70), false);
 
 			ImGui::NewLine();
 			RegularModify::CursorPos(20); ImGui::Text("The slope of the transition:");
 			ImGui::SameLine();
 			RegularModify::CursorPos(200);
-			ImGui::PushItemWidth(max(imageVec[selectedImageVec[0]].getSurface()->w, 360) - 220);
+			ImGui::PushItemWidth(max(im2merge.imOut.getSurface()->w, 360) - 220);
 			float segedSlope = im2merge.getSlope();
 			if (ImGui::SliderFloat("##slope", &segedSlope, 0.0f, 360.0f, "%.4f")) {
 				im2merge.setSlope(segedSlope);
-				im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
+				im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), *im1, *im2);
 			}
 			RegularModify::CursorPos(200);
 			if (ImGui::InputFloat("##slope2", &segedSlope, 0)) {
@@ -1030,14 +1197,16 @@ void CMyApp::Render()
 					segedSlope = 360.0f;
 				}
 				im2merge.setSlope(segedSlope);
-				im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), imageVec[selectedImageVec[0]], imageVec[selectedImageVec[1]]);
+				im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), *im1, *im2);
 			}
 			ImGui::PopItemWidth();
 
 			ImGui::EndChild();
 			ImGui::NewLine();
 
-			ImGui::BeginChild("EndButtons_4", ImVec2(max(imageVec[selectedImageVec[0]].getSurface()->w, 360), 80));
+			//--------button
+
+			ImGui::BeginChild("EndButtons_4", ImVec2(max(im2merge.imOut.getSurface()->w, 360), 80));
 				ImGui::NewLine();
 				RegularModify::CursorPos(20);
 
@@ -1046,24 +1215,109 @@ void CMyApp::Render()
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo);
 				if (ImGui::Button("Load##stradd", ImVec2(150, 50))) {
-					
-					// this or exit on betoltes
-					SDL_Surface* source = im2merge.imOut.getSurface();
-					SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
-						source->w, source->h, source->format->BitsPerPixel, source->format->format);
-					if (destination != nullptr) {
-						SDL_BlitSurface(source, nullptr, destination, nullptr);
+
+					//images
+					if (imfVec[selectedImFVec[0]].iof == iofImage && imfVec[selectedImFVec[1]].iof == iofImage) {
+
+						SDL_Surface* source = im2merge.imOut.getSurface();
+						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+							source->w, source->h, source->format->BitsPerPixel, source->format->format);
+						if (destination != nullptr) {
+							SDL_BlitSurface(source, nullptr, destination, nullptr);
+						}
+						Image imseged;
+						imseged.setSurface(destination);
+						imseged.textureFromSurface();
+
+						ImageFolder imfseged;
+						imfseged.iof = iofImage;
+						imfseged.im = imseged;
+
+						imfVec.push_back(imfseged);
+
+						StoredOperaionsClass s;
+						storedOperationsVector.push_back(s);
+
 					}
-					Image imseged;
-					imseged.setSurface(destination);
-					imseged.textureFromSurface();
-					
-					imageVec.push_back(imseged);
+
+					//folder (+image/folder)
+					else {
+
+						Folder segedFolder;
+						StoredOperaionsClass segedStoredOperationsClass;
+
+						if (imfVec[selectedImFVec[0]].iof == iofFolder) {
+							segedFolder.Append(imfVec[selectedImFVec[0]].f);
+							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
+						}
+						else if (imfVec[selectedImFVec[0]].iof == iofImage) {
+							segedFolder.Append(imfVec[selectedImFVec[1]].f);
+							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
+							im2merge.swap = true;
+						}
+
+						SDL_Surface* source = im2merge.imOut.getSurface();
+						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+							source->w, source->h, source->format->BitsPerPixel, source->format->format);
+						if (destination != nullptr) {
+							SDL_BlitSurface(source, nullptr, destination, nullptr);
+						}
+						Image imseged;
+						imseged.setSurface(destination);
+						imseged.textureFromSurface();
+						segedFolder.images[0] = imseged;
+						segedFolder.createIconImageFromImages();
+
+						//folder + image
+						if ((imfVec[selectedImFVec[0]].iof == iofImage) || (imfVec[selectedImFVec[1]].iof == iofImage)) {
+							Image* im;
+							if (imfVec[selectedImFVec[0]].iof == iofImage) {
+								im = &imfVec[selectedImFVec[0]].im;
+							}
+							else {
+								im = &imfVec[selectedImFVec[1]].im;
+							}
+
+							ImageFolder segedimf;
+							segedimf.iof == iofImage;
+							segedimf.im = *im;
+							im2merge.setImageFolder(segedimf);
+						}
+
+						//folders
+						else {
+							ImageFolder segedimf;
+							segedimf.iof == iofFolder;
+							//do folders operations !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+							segedimf.f = imfVec[selectedImFVec[1]].f;
+							im2merge.setImageFolder(segedimf);
+
+							//im2ssim.ifFoldthanOperationsNo = selectedImFVec[1];
+						}
+
+						StoredOperaionsClass::storedOperation segedOp;
+						segedOp.ote = StoredOperaionsClass::oteImage2Merge;
+						segedOp.i2m = im2merge;
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+							segedOp.affectedElements.push_back(i);
+						}
+						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
+						storedOperationsVector.push_back(segedStoredOperationsClass);
+
+						ImageFolder imfseged;
+						imfseged.iof = iofFolder;
+						imfseged.f = segedFolder;
+
+						imfVec.push_back(imfseged);
+
+					}
 
 					ImGui::OpenPopup("Betoltes##Pop");
+				
 				}
 
-				ImGui::SameLine(); RegularModify::CursorPos(max(170, imageVec[selectedImageVec[0]].getSurface()->w - 170));
+				ImGui::SameLine(); RegularModify::CursorPos(max(170, im2merge.imOut.getSurface()->w - 170));
 				Back();
 
 				imFo->Scale = 1.f;
@@ -1457,7 +1711,7 @@ void Image1Magnify::MagnifyMethod(Image im) {
 	imOut.textureFromSurface();
 }
 
-void Image1Save::SaveFolder(Folder f, char* cstr, int j) {
+void Image1Save::SaveFolder(Folder f, char* cstr, int j, StoredOperaionsClass storedOperationsVector) { //todo: get every image here in here
 	SDL_Surface* source = f.images[j].getSurface();
 	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 		source->w, source->h, source->format->BitsPerPixel, source->format->format);
@@ -1468,16 +1722,15 @@ void Image1Save::SaveFolder(Folder f, char* cstr, int j) {
 	
 
 	if (j != 0) {
-		for (int k = 0; k < f.storedOperationsVector.size(); k++) {
-			//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! edited
-			if (std::find(f.storedOperationsVector[k].affectedElements.begin(), f.storedOperationsVector[k].affectedElements.end(), j) != f.storedOperationsVector[k].affectedElements.end()) {
-				switch (f.storedOperationsVector[k].ote) {
-					case Folder::oteImage1Magnify: {
+		for (int k = 0; k < storedOperationsVector.storedOperationsElement.size(); k++) {// go through the operations
+			if (std::find(storedOperationsVector.storedOperationsElement[k].affectedElements.begin(), storedOperationsVector.storedOperationsElement[k].affectedElements.end(), j) != storedOperationsVector.storedOperationsElement[k].affectedElements.end()) {//if current image is affected
+				switch (storedOperationsVector.storedOperationsElement[k].ote) {
+					case StoredOperaionsClass::oteImage1Magnify: {
 
 						if (f.images[0].getSurface()->w <= f.images[j].getSurface()->w && f.images[0].getSurface()->h <= f.images[j].getSurface()->h) {
-							f.storedOperationsVector[k].i1m.setImage(imOut);
-							f.storedOperationsVector[k].i1m.MagnifyMethod(imOut);
-							imOut = f.storedOperationsVector[k].i1m.imOut;
+							storedOperationsVector.storedOperationsElement[k].i1m.setImage(imOut);
+							storedOperationsVector.storedOperationsElement[k].i1m.MagnifyMethod(imOut);
+							imOut = storedOperationsVector.storedOperationsElement[k].i1m.imOut;
 						}
 
 						else {
@@ -1485,7 +1738,45 @@ void Image1Save::SaveFolder(Folder f, char* cstr, int j) {
 						}
 						break;
 					}
-					case Folder::oteImage2SSIM: {
+					case StoredOperaionsClass::oteImage2SSIM: {
+
+						if (storedOperationsVector.storedOperationsElement[k].i2s.storediof.iof == iofImage) {
+							storedOperationsVector.storedOperationsElement[k].i2s.setImage(imOut);
+							storedOperationsVector.storedOperationsElement[k].i2s.SSIMSurface(imOut, storedOperationsVector.storedOperationsElement[k].i2s.storediof.im);
+							imOut = storedOperationsVector.storedOperationsElement[k].i2s.imOut;
+						}
+						else if (storedOperationsVector.storedOperationsElement[k].i2s.storediof.iof == iofFolder) {
+							storedOperationsVector.storedOperationsElement[k].i2s.setImage(imOut);
+							storedOperationsVector.storedOperationsElement[k].i2s.SSIMSurface(imOut, storedOperationsVector.storedOperationsElement[k].i2s.storediof.f.images[j]);
+							imOut = storedOperationsVector.storedOperationsElement[k].i2s.imOut;
+						}
+
+						break;
+					}
+
+					case StoredOperaionsClass::oteImage2Merge: {
+
+						if (storedOperationsVector.storedOperationsElement[k].i2m.storediof.iof == iofImage) {
+							storedOperationsVector.storedOperationsElement[k].i2m.setImage(imOut);
+							if (storedOperationsVector.storedOperationsElement[k].i2m.swap) {
+								storedOperationsVector.storedOperationsElement[k].i2m.plotLineMerge(storedOperationsVector.storedOperationsElement[k].i2m.getUx(), storedOperationsVector.storedOperationsElement[k].i2m.getUy(), storedOperationsVector.storedOperationsElement[k].i2m.storediof.im ,imOut);
+							}
+							else {
+								storedOperationsVector.storedOperationsElement[k].i2m.plotLineMerge(storedOperationsVector.storedOperationsElement[k].i2m.getUx(), storedOperationsVector.storedOperationsElement[k].i2m.getUy(), imOut, storedOperationsVector.storedOperationsElement[k].i2m.storediof.im);
+							}
+							imOut = storedOperationsVector.storedOperationsElement[k].i2m.imOut;
+						}
+						else if (storedOperationsVector.storedOperationsElement[k].i2m.storediof.iof == iofFolder) {
+							storedOperationsVector.storedOperationsElement[k].i2m.setImage(imOut);
+							if (storedOperationsVector.storedOperationsElement[k].i2m.swap) {
+								storedOperationsVector.storedOperationsElement[k].i2m.plotLineMerge(storedOperationsVector.storedOperationsElement[k].i2m.getUx(), storedOperationsVector.storedOperationsElement[k].i2m.getUy(), storedOperationsVector.storedOperationsElement[k].i2m.storediof.f.images[j], imOut);
+							}
+							else {
+								storedOperationsVector.storedOperationsElement[k].i2m.plotLineMerge(storedOperationsVector.storedOperationsElement[k].i2m.getUx(), storedOperationsVector.storedOperationsElement[k].i2m.getUy(), imOut, storedOperationsVector.storedOperationsElement[k].i2m.storediof.f.images[j]);
+							}
+							imOut = storedOperationsVector.storedOperationsElement[k].i2m.imOut;
+						}
+
 						break;
 					}
 				}
@@ -1808,6 +2099,7 @@ void Image2Merge::Reset() {
 		ux = uy = 0;
 	}
 	upd = false;
+	swap = false;
 }
 
 /*

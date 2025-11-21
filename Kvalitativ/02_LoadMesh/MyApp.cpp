@@ -22,10 +22,9 @@ CMyApp::CMyApp(void)
 	window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_HorizontalScrollbar;
 
 	strcpy(stradd, "C:/Users/User/Pictures/ac2.jpg");
-	strcpy(straddverified, stradd);
-	RegularModify::Verify(stradd, straddverified);
+	RegularModify::Verify(stradd);
 
-	currentImageEnum = SEMMIENUM;
+	currentImageEnum = OPERATIONSENUM;
 	strcpy(outstr, "C:/Users/User/Pictures/save.png");
 
 
@@ -86,6 +85,8 @@ bool CMyApp::Init()
 	Colors[ColorEnum::BUTTON_GREY_HOVERED] = ImVec4(141 / 255.f, 141 / 255.f, 141 / 255.f, 1.f);
 	Colors[ColorEnum::BUTTON_GREY_ACTIVE] = ImVec4(160 / 255.f, 160 / 255.f, 160 / 255.f, 1.f);
 
+	//TestMethod();
+
 	return true;
 }
 
@@ -96,10 +97,9 @@ void CMyApp::Clean()
 	//delete[] outstr;
 }
 
-void CMyApp::Update()
+/*void CMyApp::Update()
 {
-
-}
+}*/
 
 void CMyApp::Render()
 {
@@ -113,9 +113,6 @@ void CMyApp::Render()
 
 	ImGui::Begin("Qualitative comparison", 0, window_flags); 
 
-		//ImGui::PushFont(arial);
-		//ImGui::PopFont();
-		
 	ImFont* imFo = ImGui::GetFont();
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 
@@ -133,7 +130,14 @@ void CMyApp::Render()
 	ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, Colors[ColorEnum::SCROLL_GRAB_HOVERED]);
 	ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, Colors[ColorEnum::SCROLL_GRAB_ACTIVE]);
 
-	ImGui::BeginChild("Pictures", ImVec2(0, imfVec.size() == 0 ? 100 : 395), false); {
+	bool isFolder = false;
+	for (int i = 0; i < imfVec.size(); i++) {
+		if (imfVec[i].iof == iofFolder) {
+			isFolder = true;
+		}
+	}
+
+	ImGui::BeginChild("Pictures", ImVec2(0, imfVec.size() == 0 ? 100 : isFolder? 450 : 395), false); {
 
 		imFo->Scale = 1.5f;	ImGui::PushFont(imFo);
 		ImGui::NewLine(); RegularModify::CursorPos(20); ImGui::Text("Images: ");
@@ -142,28 +146,31 @@ void CMyApp::Render()
 
 		if (imfVec.size() > 0) {
 
+
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
 
-			ImGui::BeginChild("scrolling", ImVec2(0, 330), false, ImGuiWindowFlags_HorizontalScrollbar); {
-				RegularModify::CursorPos(20);
+			ImGui::BeginChild("scrolling", ImVec2(0, isFolder? 385 : 330), false, ImGuiWindowFlags_HorizontalScrollbar); {
+				//RegularModify::CursorPos(20);
 				for (int i = 0; i < imfVec.size(); i++) {
 
 					switch (imfVec[i].iof) {
-					case iofImage: {
-						imfVec[i].im.drawImage(300, std::find(selectedImFVec.begin(), selectedImFVec.end(), i) != selectedImFVec.end());
-						break;
-					}
-					case iofFolder: {
-						imfVec[i].f.drawImage(300, std::find(selectedImFVec.begin(), selectedImFVec.end(), i) != selectedImFVec.end());
-						break;
-					}
-					default: {
-						break;
-					}
+						case iofImage: {
+							RegularModify::CursorPos(20 + 315 * i);
+							imfVec[i].im.drawImage(300, std::find(selectedImFVec.begin(), selectedImFVec.end(), i) != selectedImFVec.end());
+							break;
+						}
+						case iofFolder: {
+							RegularModify::CursorPos(20 + 315 * i);
+							imfVec[i].f.drawImage(300, std::find(selectedImFVec.begin(), selectedImFVec.end(), i) != selectedImFVec.end());
+							break;
+						}
+						default: {
+							break;
+						}
 					}
 
-					if (ImGui::IsItemClicked() && (currentImageEnum == SEMMIENUM || currentImageEnum == LOADENUM))
+					if (ImGui::IsItemClicked() && (currentImageEnum == OPERATIONSENUM || currentImageEnum == LOADENUM))
 					{
 						if (std::find(selectedImFVec.begin(), selectedImFVec.end(), i) == selectedImFVec.end()) {
 							selectedImFVec.push_back(i);
@@ -176,6 +183,48 @@ void CMyApp::Render()
 
 				}
 				RegularModify::CursorPos(ImGui::GetCursorPosX() + 20);
+
+				if (isFolder) {
+					ImGui::NewLine();
+					ImGui::NewLine();
+				}
+
+				//RegularModify::CursorPos(20); 
+				for (int i = 0; i < imfVec.size(); i++) {
+
+					switch (imfVec[i].iof) {
+						case iofImage: {
+							//RegularModify::CursorPos(ImGui::GetCursorPosX() + 305); 
+							break;
+						}
+						case iofFolder: {
+							RegularModify::CursorPos(20 + 315 * i);
+							if (ImGui::Button(("<-##" + std::to_string(i)).c_str(), ImVec2(147, 50))) {
+								if (imfVec[i].f.iconN != 0) {
+									imfVec[i].f.iconN--;
+									imfVec[i].f.createIconImageFromImages();
+								}
+							}
+							ImGui::SameLine();
+							//RegularModify::CursorPos(ImGui::GetCursorPosX() + 20);
+							if (ImGui::Button(("->##"+ std::to_string(i)).c_str(), ImVec2(147, 50))) {
+								if (imfVec[i].f.iconN != imfVec[i].f.images.size()-1) {
+									imfVec[i].f.iconN++;
+									imfVec[i].f.createIconImageFromImages();
+								}
+							}
+							//ImGui::SameLine();
+							//imfVec[i].f.drawImage(300, std::find(selectedImFVec.begin(), selectedImFVec.end(), i) != selectedImFVec.end());
+							break;
+						}
+						default: {
+							break;
+						}
+					}
+					ImGui::SameLine();
+
+				}
+				//RegularModify::CursorPos(ImGui::GetCursorPosX() + 20);
 			}
 			ImGui::EndChild();
 
@@ -194,7 +243,7 @@ void CMyApp::Render()
 
 	switch (currentImageEnum)
 	{
-	case CMyApp::SEMMIENUM: //--------------------------------------------------------------------------------------------------
+	case CMyApp::OPERATIONSENUM: //--------------------------------------------------------------------------------------------------
 	{
 		if (selectedImFVec.size() > 0) {
 
@@ -442,6 +491,7 @@ void CMyApp::Render()
 
 			break;
 		}
+
 		case CMyApp::LOADENUM: //-------------------------------------------------------------------------------------------------
 		{
 			SetBasicUI();
@@ -474,12 +524,6 @@ void CMyApp::Render()
 				RegularModify::CursorPos(20); ImGui::InputText("##StrAdd", stradd, IM_ARRAYSIZE(stradd));
 				ImGui::PopItemWidth();
 
-				/*if (currentErrors[0]) {
-					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-					RegularModify::CursorPos(20); ImGui::Text("Incorrect path");
-					ImGui::PopStyleColor();
-				}
-				else*/ 
 				ImGui::NewLine();
 			}
 
@@ -494,90 +538,12 @@ void CMyApp::Render()
 				imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo); RegularModify::CursorPos(20);
 				if (ImGui::Button("Load##Load", ImVec2(150, 50))) {
-					switch (im0load.getLoadType())
-					{
-					case Image0FromFile::loadTypeEnum::PICTURE: {
 
-						if (RegularModify::Verify(stradd, straddverified)) {
-							Image sizeVerify = Image0FromFile::Load(straddverified);
-							if (sizeVerify.getSurface() != nullptr && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
-								ImageFolder seged;
-								seged.im = sizeVerify;
-								seged.iof = iofImage;
-								imfVec.push_back(seged);
-
-								StoredOperaionsClass s;
-								storedOperationsVector.push_back(s);
-							}
-							else {
-								ImGui::OpenPopup("Load##InvalidSize");
-							}
-
-						}
-						else {
-							ImGui::OpenPopup("Load##InvalidPath");
-						}
-						break;
-					}
-
-					case Image0FromFile::loadTypeEnum::FOLDER: {
-
-						Folder fold;
-						std::string path = stradd;
-						path += "/*";
-						std::string path2 = stradd;
-
-						WIN32_FIND_DATAA ffd;
-						HANDLE hFind = FindFirstFileA(path.c_str(), &ffd);
-
-						if (hFind == INVALID_HANDLE_VALUE) {
-							ImGui::OpenPopup("Load##InvalidPath");
-							break;
-						}
-
-						while (FindNextFileA(hFind, &ffd) != 0)
-						{
-							std::string seged = path2 + "/" + (std::string)ffd.cFileName;
-							char* cstr = new char[seged.size() + 1];
-							std::strcpy(cstr, seged.c_str());
-
-							if (RegularModify::Verify(cstr, straddverified)) {
-								if (!fold.Load(straddverified)) { //might not be necesseary to be a method
-									ImGui::OpenPopup("Load##FolderInvalidSize");
-								}
-								else {
-									std::cout << cstr << std::endl;
-								}
-							}
-							delete[] cstr;
-						}
-						FindClose(hFind);
-
-						if (fold.images.size() == 0) {
-							ImGui::OpenPopup("Load##EmptyFolder");
-						}
-						else {
-
-							for (Image im : fold.images) {
-								im.textureFromSurface();
-							}
-
-							fold.createIconImageFromImages();
-
-							ImageFolder seged;
-							seged.f = fold;
-							seged.iof = iofFolder;
-							imfVec.push_back(seged);
-
-							StoredOperaionsClass s;
-							storedOperationsVector.push_back(s);
-
-						}
-
-						break;
-					}
-					default:
-						break;
+					ImageFolder loadImFolder = im0load.Load(stradd);
+					if (loadImFolder.iof != iofEmpty) {
+						imfVec.push_back(loadImFolder);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 					}
 				}
 
@@ -781,8 +747,8 @@ void CMyApp::Render()
 
 					imfVec.push_back(imfseged);
 
-					StoredOperaionsClass s;
-					storedOperationsVector.push_back(s);
+					//StoredOperaionsClass s;
+					//storedOperationsVector.push_back(s);
 				}
 
 				ImGui::PopStyleColor(3);
@@ -820,7 +786,7 @@ void CMyApp::Render()
 
 			ImGui::BeginChild("Values_Magnify", ImVec2(max(im1mag.imOut.getSurface()->w, 400), 180), false); {
 
-				imFo->Scale = 1.3f;
+				/*imFo->Scale = 1.3f;
 				ImGui::PushFont(imFo);
 				ImGui::NewLine(); RegularModify::CursorPos(1 * fmax(im1mag.imOut.getSurface()->w, 400) / 4 - 70);
 
@@ -864,7 +830,7 @@ void CMyApp::Render()
 				ImGui::PopFont();
 
 				RegularModify::ShowHelpMarker("When selected, you can adjust the position of the magnified area.");
-
+				*/
 
 				ImGui::NewLine();
 
@@ -903,8 +869,8 @@ void CMyApp::Render()
 
 				RegularModify::CursorPos(20); ImGui::Text("Magnification level:");
 				ImGui::SameLine();
-				RegularModify::CursorPos(190);
-				ImGui::PushItemWidth(fmax(im1mag.imOut.getSurface()->w, 400) - 210);
+				RegularModify::CursorPos(200);
+				ImGui::PushItemWidth(fmax(im1mag.imOut.getSurface()->w, 400) - 220);
 				float segedZoomTimes = im1mag.getZoomTimes();
 				if (ImGui::SliderFloat("##ZoomTimes", &segedZoomTimes, 1.0f, 10.0f, "%.4f")) {
 					im1mag.setZoomTimes(segedZoomTimes);
@@ -918,6 +884,21 @@ void CMyApp::Render()
 					}
 
 				}
+				RegularModify::CursorPos(200);
+				if (ImGui::InputFloat("##ZoomTimes2", &segedZoomTimes, 0)) {
+					if(segedZoomTimes >= 1 && segedZoomTimes <= 10 ){
+						im1mag.setZoomTimes(segedZoomTimes);
+						if (segedZoomW > im1mag.imOut.getSurface()->w / (im1mag.getZoomTimes() + 1)) {
+							segedZoomW = im1mag.imOut.getSurface()->w / (im1mag.getZoomTimes() + 1);
+							im1mag.setZoomW(segedZoomW);
+						}
+						if (segedZoomH > im1mag.imOut.getSurface()->h / (im1mag.getZoomTimes() + 1)) {
+							segedZoomH = im1mag.imOut.getSurface()->h / (im1mag.getZoomTimes() + 1);
+							im1mag.setZoomH(segedZoomH);
+						}
+					}
+				}
+
 				ImGui::PopItemWidth();
 			}
 			ImGui::EndChild();
@@ -954,47 +935,66 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						StoredOperaionsClass s;
-						storedOperationsVector.push_back(s);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 
-						/*//+ exit on load
-						Image imseged;
-						imseged.setSurface(im1mag.imOut.getSurface());
-						imseged.textureFromSurface();
-						ImageFolder imfseged;
-						imfseged.iof = iofImage;
-						imfseged.im = imseged;
-
-						imfVec.push_back(imfseged);*/
+						/*//+ exit on load*/
 
 					}
 
 					//folder
 					else {
 						Folder segedFolder;
-						StoredOperaionsClass segedStoredOperationsClass;
-						int offset = 0;
+						//StoredOperaionsClass segedStoredOperationsClass;
+						//int offset = 0;
 						for (int i = 0; i < selectedImFVec.size(); i++) {
 							if (imfVec[selectedImFVec[i]].iof == iofImage) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].im);
-								offset++;
+								//offset++;
 							}
 							else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].f);
 								//segedStoredOperationsClass += storedOperationsVector[i];
 
-								for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
+								/*for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
 									segedStoredOperationsClass.storedOperationsElement.push_back(storedOperationsVector[i].storedOperationsElement[j]);
 
 									for (int k = 0; k < storedOperationsVector[i].storedOperationsElement[j].affectedElements.size(); k++) {
 										segedStoredOperationsClass.storedOperationsElement[j].affectedElements[k] += offset;
 									}
 								}
-								offset += imfVec[selectedImFVec[i]].f.images.size();
+								offset += imfVec[selectedImFVec[i]].f.images.size();*/
 							}
 						}
 
-						SDL_Surface* source = im1mag.imOut.getSurface();
+						Folder savedFolder;
+
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+
+							if (segedFolder.images[i].getSurface()->w >= segedFolder.images[0].getSurface()->w &&
+								segedFolder.images[i].getSurface()->h >= segedFolder.images[0].getSurface()->h) {
+
+								im1mag.setImage(segedFolder.images[i]);
+								im1mag.MagnifyMethod(segedFolder.images[i]);
+
+								SDL_Surface* source = im1mag.imOut.getSurface();
+								SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+									source->w, source->h, source->format->BitsPerPixel, source->format->format);
+								if (destination != nullptr) {
+									SDL_BlitSurface(source, nullptr, destination, nullptr);
+								}
+
+								Image imseged;
+								imseged.setSurface(destination);
+								imseged.textureFromSurface();
+
+								savedFolder.images.push_back(imseged);
+							}
+						}
+
+						savedFolder.createIconImageFromImages();
+
+						/*SDL_Surface* source = im1mag.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
 						if (destination != nullptr) {
@@ -1013,14 +1013,16 @@ void CMyApp::Render()
 							segedOp.affectedElements.push_back(i);
 						}
 						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
-						storedOperationsVector.push_back(segedStoredOperationsClass);
+						storedOperationsVector.push_back(segedStoredOperationsClass);*/
 
 						ImageFolder imfseged;
 						imfseged.iof = iofFolder;
-						imfseged.f = segedFolder;
+						imfseged.f = savedFolder;//segedFolder;
 
 						imfVec.push_back(imfseged);
 
+						im1mag.setImage(segedFolder.images[0]);
+						im1mag.MagnifyMethod(segedFolder.images[0]);
 					}
 				}
 
@@ -1094,6 +1096,9 @@ void CMyApp::Render()
 					ImGui::SameLine();
 					if (ImGui::RadioButton(segedBlurRadioNames[i], &segedBlurType, i)) {
 						im1blur.blurType = segedBlurType;
+						if (im1blur.blurSize > 9 && im1blur.blurType == 1) {
+							im1blur.blurSize = 9;
+						}
 						if (im1blur.blurType == 1 && im1blur.blurSize % 2 == 0) {
 							im1blur.blurSize--;
 						}
@@ -1115,6 +1120,9 @@ void CMyApp::Render()
 						segedBlurSize = fmin(im1blur.imOut.getSurface()->w / 2, im1blur.imOut.getSurface()->h / 2);
 					}
 
+					if (segedBlurSize > 9 && im1blur.blurType == 1) {
+						segedBlurSize = 9;
+					}
 					if (segedBlurSize % 2 == 0 && im1blur.blurType == 1) {
 						segedBlurSize--;
 					}
@@ -1162,37 +1170,62 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						StoredOperaionsClass s;
-						storedOperationsVector.push_back(s);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 
 					}
 
 					//folder
 					else {
 						Folder segedFolder;
-						StoredOperaionsClass segedStoredOperationsClass;
-						int offset = 0;
+						//StoredOperaionsClass segedStoredOperationsClass;
+						//int offset = 0;
 						for (int i = 0; i < selectedImFVec.size(); i++) {
 							if (imfVec[selectedImFVec[i]].iof == iofImage) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].im);
-								offset++;
+								//offset++;
 							}
 							else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].f);
 								//segedStoredOperationsClass += storedOperationsVector[i];
 
-								for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
+								/*for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
 									segedStoredOperationsClass.storedOperationsElement.push_back(storedOperationsVector[i].storedOperationsElement[j]);
 
 									for (int k = 0; k < storedOperationsVector[i].storedOperationsElement[j].affectedElements.size(); k++) {
 										segedStoredOperationsClass.storedOperationsElement[j].affectedElements[k] += offset;
 									}
 								}
-								offset += imfVec[selectedImFVec[i]].f.images.size();
+								offset += imfVec[selectedImFVec[i]].f.images.size();*/
 							}
 						}
 
-						SDL_Surface* source = im1blur.imOut.getSurface();
+						Folder savedFolder;
+
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+
+							im1blur.setImage(segedFolder.images[i]);
+							im1blur.BlurMethod(segedFolder.images[i]);
+
+							SDL_Surface* source = im1blur.imOut.getSurface();
+							SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+								source->w, source->h, source->format->BitsPerPixel, source->format->format);
+							if (destination != nullptr) {
+								SDL_BlitSurface(source, nullptr, destination, nullptr);
+							}
+
+							Image imseged;
+							imseged.setSurface(destination);
+							imseged.textureFromSurface();
+
+							savedFolder.images.push_back(imseged);
+
+						}
+
+						savedFolder.createIconImageFromImages();
+
+
+						/*SDL_Surface* source = im1blur.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
 						if (destination != nullptr) {
@@ -1211,14 +1244,16 @@ void CMyApp::Render()
 							segedOp.affectedElements.push_back(i);
 						}
 						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
-						storedOperationsVector.push_back(segedStoredOperationsClass);
+						storedOperationsVector.push_back(segedStoredOperationsClass);*/
 
 						ImageFolder imfseged;
 						imfseged.iof = iofFolder;
-						imfseged.f = segedFolder;
+						imfseged.f = savedFolder;
 
 						imfVec.push_back(imfseged);
 
+						im1blur.setImage(segedFolder.images[0]);
+						im1blur.BlurMethod(segedFolder.images[0]);
 					}
 				}
 
@@ -1260,33 +1295,10 @@ void CMyApp::Render()
 
 				ImGui::NewLine();
 
-
-				/*ImGui::PushStyleColor(ImGuiCol_Button, Colors[ColorEnum::BUTTON_BLUE]);
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Colors[ColorEnum::BUTTON_BLUE_HOVERED]);
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, Colors[ColorEnum::BUTTON_BLUE_ACTIVE]);
-				ImGui::PushStyleColor(ImGuiCol_Text, Colors[ColorEnum::TEXT_LIGHT]);
-				imFo->Scale = 1.3f;
-				ImGui::PushFont(imFo);
-				RegularModify::CursorPos((max(im1col.imOut.getSurface()->w, 400) / 2.0f) - (150.0f / 2.0f));
-
-				if (ImGui::Button("Regenerate##Col", ImVec2(150, 50))) {
-
-					if (imfVec[selectedImFVec[0]].iof == iofImage) {
-						im1col.ColorMethod(imfVec[selectedImFVec[0]].im);
-					}
-					else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
-						im1col.ColorMethod(imfVec[selectedImFVec[0]].f.images[0]);
-					}
-				}
-
-				ImGui::PopStyleColor(4);
-				imFo->Scale = 1.f; ImGui::PopFont();
-				ImGui::NewLine();*/
-
 				RegularModify::CursorPos(20); ImGui::Text("Color modificatin type: "); ImGui::NewLine();
 				RegularModify::CursorPos(20);
 
-				char* segedColorRadioNames[] = { "Null","GreyScale","Invert" };
+				char* segedColorRadioNames[] = { "Null","GreyScale","Red","Green","Blue","Invert"};
 				int segedColorType = im1col.imctype;
 				for (int i = 0; i < sizeof(segedColorRadioNames) / sizeof(char*); i++) {
 					ImGui::SameLine();
@@ -1339,37 +1351,61 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						StoredOperaionsClass s;
-						storedOperationsVector.push_back(s);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 
 					}
 
 					//folder
 					else {
 						Folder segedFolder;
-						StoredOperaionsClass segedStoredOperationsClass;
-						int offset = 0;
+						//StoredOperaionsClass segedStoredOperationsClass;
+						//int offset = 0;
 						for (int i = 0; i < selectedImFVec.size(); i++) {
 							if (imfVec[selectedImFVec[i]].iof == iofImage) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].im);
-								offset++;
+								//offset++;
 							}
 							else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 								segedFolder.Append(imfVec[selectedImFVec[i]].f);
 								//segedStoredOperationsClass += storedOperationsVector[i];
 
-								for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
+								/*for (int j = 0; j < storedOperationsVector[i].storedOperationsElement.size(); j++) {
 									segedStoredOperationsClass.storedOperationsElement.push_back(storedOperationsVector[i].storedOperationsElement[j]);
 
 									for (int k = 0; k < storedOperationsVector[i].storedOperationsElement[j].affectedElements.size(); k++) {
 										segedStoredOperationsClass.storedOperationsElement[j].affectedElements[k] += offset;
 									}
 								}
-								offset += imfVec[selectedImFVec[i]].f.images.size();
+								offset += imfVec[selectedImFVec[i]].f.images.size();*/
 							}
 						}
 
-						SDL_Surface* source = im1col.imOut.getSurface();
+						Folder savedFolder;
+
+						for (int i = 0; i < segedFolder.images.size(); i++) {
+
+								im1col.setImage(segedFolder.images[i]);
+								im1col.ColorMethod(segedFolder.images[i]);
+
+								SDL_Surface* source = im1col.imOut.getSurface();
+								SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+									source->w, source->h, source->format->BitsPerPixel, source->format->format);
+								if (destination != nullptr) {
+									SDL_BlitSurface(source, nullptr, destination, nullptr);
+								}
+
+								Image imseged;
+								imseged.setSurface(destination);
+								imseged.textureFromSurface();
+
+								savedFolder.images.push_back(imseged);
+						}
+
+						savedFolder.createIconImageFromImages();
+
+
+						/*SDL_Surface* source = im1col.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
 						if (destination != nullptr) {
@@ -1388,14 +1424,16 @@ void CMyApp::Render()
 							segedOp.affectedElements.push_back(i);
 						}
 						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
-						storedOperationsVector.push_back(segedStoredOperationsClass);
+						storedOperationsVector.push_back(segedStoredOperationsClass);*/
 
 						ImageFolder imfseged;
 						imfseged.iof = iofFolder;
-						imfseged.f = segedFolder;
+						imfseged.f = savedFolder;
 
 						imfVec.push_back(imfseged);
 
+						im1col.setImage(segedFolder.images[0]);
+						im1col.ColorMethod(segedFolder.images[0]);
 					}					
 				}
 
@@ -1429,10 +1467,12 @@ void CMyApp::Render()
 
 			ImGui::NewLine();
 			if (imfVec[selectedImFVec[0]].iof == iofImage) {
-				ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].im.getTexture(), ImVec2(imfVec[selectedImFVec[0]].im.getSurface()->w, imfVec[selectedImFVec[0]].im.getSurface()->h));
+				imfVec[selectedImFVec[0]].im.drawImage();
+				//ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].im.getTexture(), ImVec2(imfVec[selectedImFVec[0]].im.getSurface()->w, imfVec[selectedImFVec[0]].im.getSurface()->h));
 			}
 			else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
-				ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].f.images[0].getTexture(), ImVec2(imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, imfVec[selectedImFVec[0]].f.images[0].getSurface()->h));
+				imfVec[selectedImFVec[0]].f.images[0].drawImage();
+				//ImGui::Image((void*)(intptr_t)imfVec[selectedImFVec[0]].f.images[0].getTexture(), ImVec2(imfVec[selectedImFVec[0]].f.images[0].getSurface()->w, imfVec[selectedImFVec[0]].f.images[0].getSurface()->h));
 			}
 			ImGui::NewLine();
 
@@ -1443,11 +1483,6 @@ void CMyApp::Render()
 				ImGui::PushItemWidth(max(imfVec[selectedImFVec[0]].iof == iofImage ? imfVec[selectedImFVec[0]].im.getSurface()->w - 40 : imfVec[selectedImFVec[0]].f.images[0].getSurface()->w - 40, 360));
 				RegularModify::CursorPos(20); ImGui::InputText("##SavePath", outstr, IM_ARRAYSIZE(outstr));
 				ImGui::PopItemWidth();
-				/*if (currentErrors[1]) {
-					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-					RegularModify::CursorPos(20); ImGui::Text("Incorrect path");
-					ImGui::PopStyleColor();
-				}*/
 			}
 			ImGui::EndChild();
 
@@ -1468,13 +1503,8 @@ void CMyApp::Render()
 					//available path (there isn't a file with this name already)
 					if (stat(outstr, &sb) != 0) {
 						if (selectedImFVec.size() == 1 && imfVec[selectedImFVec[0]].iof == iofImage) {
-							if (IMG_SavePNG(imfVec[selectedImFVec[0]].im.getSurface(), outstr) == 0) {
-								if (stat(outstr, &sb) == 0) { //check, might not needed
-									currentImageEnum = SEMMIENUM;
-								}
-								else {
-									ImGui::OpenPopup("Save##Error");
-								}
+							if (im1sav.Save(imfVec[selectedImFVec[0]].im,outstr)) { 
+								currentImageEnum = OPERATIONSENUM;
 							}
 							else {
 								ImGui::OpenPopup("Save##Error");
@@ -1500,35 +1530,18 @@ void CMyApp::Render()
 									char* cstr = new char[seged.size() + 1];
 									std::strcpy(cstr, seged.c_str());
 
-									IMG_SavePNG(imfVec[selectedImFVec[i]].im.getSurface(), cstr);
+									im1sav.Save(imfVec[selectedImFVec[i]].im, cstr); //if
 
 									delete[] cstr;
-
 									n++;
 								}
-								else if (imfVec[selectedImFVec[i]].iof == iofFolder) { //shorten stuff
-									for (int j = 0; j < imfVec[selectedImFVec[i]].f.images.size(); j++) {
+								else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 
-										std::string seged = path + "/image" + std::to_string(n) + ".png";
-										char* cstr = new char[seged.size() + 1];
-										std::strcpy(cstr, seged.c_str());
+									im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, path,n); //if
 
-										//----------------------------------------------------------
-
-										//im1sav.setImage(imfVec[selectedImFVec[i]].f.images[j]);
-										im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, cstr, j, storedOperationsVector[selectedImFVec[i]]);
-
-										//freeup imseged
-
-										//----------------------------------------------------------
-
-										delete[] cstr;
-
-										n++;
-									}
 								}
 							}
-							currentImageEnum = SEMMIENUM;
+							currentImageEnum = OPERATIONSENUM;
 						}
 					}
 					//already existing image path
@@ -1602,7 +1615,7 @@ void CMyApp::Render()
 				RegularModify::CursorPos(20); ImGui::Text("SSIM's color/style: "); ImGui::NewLine();
 				RegularModify::CursorPos(20);
 
-				char* segedSsimRadioNames[] = { "Black-White","Blue","Green","Red","All color","Heatmap" };
+				char* segedSsimRadioNames[] = { "GreyScale","Blue","Green","Red","All color","Heatmap" };
 				int segedSsimColor = im2ssim.getSsimColor();
 				for (int i = 0; i < sizeof(segedSsimRadioNames) / sizeof(char*); i++) {
 					ImGui::SameLine();
@@ -1696,8 +1709,8 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						StoredOperaionsClass s;
-						storedOperationsVector.push_back(s);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 
 					}
 
@@ -1705,18 +1718,18 @@ void CMyApp::Render()
 					else {
 
 						Folder segedFolder;
-						StoredOperaionsClass segedStoredOperationsClass;
+						//StoredOperaionsClass segedStoredOperationsClass;
 
 						if (imfVec[selectedImFVec[0]].iof == iofFolder) {
 							segedFolder.Append(imfVec[selectedImFVec[0]].f);
-							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
+							//segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
 						}
 						else if (imfVec[selectedImFVec[0]].iof == iofImage) {
 							segedFolder.Append(imfVec[selectedImFVec[1]].f);
-							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
+							//segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
 						}
 
-						SDL_Surface* source = im2ssim.imOut.getSurface();
+						/*SDL_Surface* source = im2ssim.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
 						if (destination != nullptr) {
@@ -1726,47 +1739,92 @@ void CMyApp::Render()
 						imseged.setSurface(destination);
 						imseged.textureFromSurface();
 						segedFolder.images[0] = imseged;
-						segedFolder.createIconImageFromImages();
+						segedFolder.createIconImageFromImages();*/
+
+						Folder savedFolder;
 
 						//folder + image
 						if ((imfVec[selectedImFVec[0]].iof == iofImage) || (imfVec[selectedImFVec[1]].iof == iofImage)) {
-							Image* im;
+							Image* imPointer;
+							Folder* fPointer;
 							if (imfVec[selectedImFVec[0]].iof == iofImage) {
-								im = &imfVec[selectedImFVec[0]].im;
+								imPointer = &imfVec[selectedImFVec[0]].im;
+								fPointer = &imfVec[selectedImFVec[1]].f;
 							}
 							else {
-								im = &imfVec[selectedImFVec[1]].im;
+								imPointer = &imfVec[selectedImFVec[1]].im;
+								fPointer = &imfVec[selectedImFVec[0]].f;
 							}
 
-							ImageFolder segedimf;
-							segedimf.iof == iofImage;
-							segedimf.im = *im;
-							im2ssim.setImageFolder(segedimf);
+							for (int i = 0; i < fPointer->images.size(); i++) {
+								if (fPointer->images[i].getSurface()->w == imPointer->getSurface()->w && fPointer->images[i].getSurface()->h == imPointer->getSurface()->h) {
+
+									im2ssim.setImage(*imPointer);
+									im2ssim.SSIMSurface(*imPointer, fPointer->images[i]);
+									
+									SDL_Surface* source = im2ssim.imOut.getSurface();
+									SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+										source->w, source->h, source->format->BitsPerPixel, source->format->format);
+									if (destination != nullptr) {
+										SDL_BlitSurface(source, nullptr, destination, nullptr);
+									}
+
+									Image imseged;
+									imseged.setSurface(destination);
+									imseged.textureFromSurface();
+
+									savedFolder.images.push_back(imseged);
+								}
+							}
+
+							im2ssim.setImage(segedFolder.images[0]);
+							if (imfVec[selectedImFVec[0]].iof == iofImage) {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].f.images[0]);
+							}
+							else {
+								im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].im);
+							}
 						}
 
 						//folders
 						else {
-							ImageFolder segedimf;
-							segedimf.iof == iofFolder;
-							//do folders operations !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-							segedimf.f = imfVec[selectedImFVec[1]].f;
-							im2ssim.setImageFolder(segedimf);
+							for (int i = 0; i < imfVec[selectedImFVec[0]].f.images.size() <= imfVec[selectedImFVec[1]].f.images.size() ? imfVec[selectedImFVec[0]].f.images.size() : imfVec[selectedImFVec[1]].f.images.size(); i++) {
+								if (imfVec[selectedImFVec[0]].f.images[i].getSurface()->w == imfVec[selectedImFVec[1]].f.images[i].getSurface()->w && imfVec[selectedImFVec[0]].f.images[i].getSurface()->h == imfVec[selectedImFVec[1]].f.images[i].getSurface()->h) {
 
-							//im2ssim.ifFoldthanOperationsNo = selectedImFVec[1];
+									im2ssim.setImage(imfVec[selectedImFVec[0]].f.images[i]);
+									im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[i], imfVec[selectedImFVec[1]].f.images[i]);
+
+									SDL_Surface* source = im2ssim.imOut.getSurface();
+									SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+										source->w, source->h, source->format->BitsPerPixel, source->format->format);
+									if (destination != nullptr) {
+										SDL_BlitSurface(source, nullptr, destination, nullptr);
+									}
+
+									Image imseged;
+									imseged.setSurface(destination);
+									imseged.textureFromSurface();
+
+									savedFolder.images.push_back(imseged);
+								}
+							}
+
+							im2ssim.setImage(segedFolder.images[0]);
+							im2ssim.SSIMSurface(imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].f.images[0]);
 						}
 
-						StoredOperaionsClass::storedOperation segedOp;
+						/*StoredOperaionsClass::storedOperation segedOp;
 						segedOp.ote = StoredOperaionsClass::oteImage2SSIM;
 						segedOp.i2s = im2ssim;
 						for (int i = 0; i < segedFolder.images.size(); i++) {
 							segedOp.affectedElements.push_back(i);
 						}
 						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
-						storedOperationsVector.push_back(segedStoredOperationsClass);
+						storedOperationsVector.push_back(segedStoredOperationsClass);*/
 
-						ImageFolder imfseged;
-						imfseged.iof = iofFolder;
+						ImageFolder imfseged; 
+						imfseged.iof == iofFolder;
 						imfseged.f = segedFolder;
 
 						imfVec.push_back(imfseged);
@@ -1889,8 +1947,8 @@ void CMyApp::Render()
 
 						imfVec.push_back(imfseged);
 
-						StoredOperaionsClass s;
-						storedOperationsVector.push_back(s);
+						//StoredOperaionsClass s;
+						//storedOperationsVector.push_back(s);
 
 					}
 
@@ -1898,19 +1956,18 @@ void CMyApp::Render()
 					else {
 
 						Folder segedFolder;
-						StoredOperaionsClass segedStoredOperationsClass;
+						//StoredOperaionsClass segedStoredOperationsClass;
 
 						if (imfVec[selectedImFVec[0]].iof == iofFolder) {
 							segedFolder.Append(imfVec[selectedImFVec[0]].f);
-							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
+							//segedStoredOperationsClass = storedOperationsVector[selectedImFVec[0]];
 						}
 						else if (imfVec[selectedImFVec[0]].iof == iofImage) {
 							segedFolder.Append(imfVec[selectedImFVec[1]].f);
-							segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
-							im2merge.swap = true;
+							//segedStoredOperationsClass = storedOperationsVector[selectedImFVec[1]];
 						}
 
-						SDL_Surface* source = im2merge.imOut.getSurface();
+						/*SDL_Surface* source = im2ssim.imOut.getSurface();
 						SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 							source->w, source->h, source->format->BitsPerPixel, source->format->format);
 						if (destination != nullptr) {
@@ -1920,47 +1977,91 @@ void CMyApp::Render()
 						imseged.setSurface(destination);
 						imseged.textureFromSurface();
 						segedFolder.images[0] = imseged;
-						segedFolder.createIconImageFromImages();
+						segedFolder.createIconImageFromImages();*/
+
+						Folder savedFolder;
 
 						//folder + image
 						if ((imfVec[selectedImFVec[0]].iof == iofImage) || (imfVec[selectedImFVec[1]].iof == iofImage)) {
-							Image* im;
+							Image* imPointer;
+							Folder* fPointer;
 							if (imfVec[selectedImFVec[0]].iof == iofImage) {
-								im = &imfVec[selectedImFVec[0]].im;
+								imPointer = &imfVec[selectedImFVec[0]].im;
+								fPointer = &imfVec[selectedImFVec[1]].f;
 							}
 							else {
-								im = &imfVec[selectedImFVec[1]].im;
+								imPointer = &imfVec[selectedImFVec[1]].im;
+								fPointer = &imfVec[selectedImFVec[0]].f;
 							}
 
-							ImageFolder segedimf;
-							segedimf.iof == iofImage;
-							segedimf.im = *im;
-							im2merge.setImageFolder(segedimf);
+							for (int i = 0; i < fPointer->images.size(); i++) {
+								if (fPointer->images[i].getSurface()->w == imPointer->getSurface()->w && fPointer->images[i].getSurface()->h == imPointer->getSurface()->h) {
+
+									im2merge.setImage(*imPointer);
+									im2merge.plotLineMerge(im2merge.getUx(),im2merge.getUy(), *imPointer, fPointer->images[i]);
+
+									SDL_Surface* source = im2merge.imOut.getSurface();
+									SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+										source->w, source->h, source->format->BitsPerPixel, source->format->format);
+									if (destination != nullptr) {
+										SDL_BlitSurface(source, nullptr, destination, nullptr);
+									}
+
+									Image imseged;
+									imseged.setSurface(destination);
+									imseged.textureFromSurface();
+
+									savedFolder.images.push_back(imseged);
+								}
+							}
+
+							im2merge.setImage(segedFolder.images[0]);
+							if (imfVec[selectedImFVec[0]].iof == iofImage) {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), imfVec[selectedImFVec[0]].im, imfVec[selectedImFVec[1]].f.images[0]);
+							}
+							else {
+								im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].im);
+							}
 						}
 
 						//folders
 						else {
-							ImageFolder segedimf;
-							segedimf.iof == iofFolder;
-							//do folders operations !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-							segedimf.f = imfVec[selectedImFVec[1]].f;
-							im2merge.setImageFolder(segedimf);
+							for (int i = 0; i < imfVec[selectedImFVec[0]].f.images.size() <= imfVec[selectedImFVec[1]].f.images.size() ? imfVec[selectedImFVec[0]].f.images.size() : imfVec[selectedImFVec[1]].f.images.size(); i++) {
+								if (imfVec[selectedImFVec[0]].f.images[i].getSurface()->w == imfVec[selectedImFVec[1]].f.images[i].getSurface()->w && imfVec[selectedImFVec[0]].f.images[i].getSurface()->h == imfVec[selectedImFVec[1]].f.images[i].getSurface()->h) {
 
-							//im2ssim.ifFoldthanOperationsNo = selectedImFVec[1];
+									im2merge.setImage(imfVec[selectedImFVec[0]].f.images[i]);
+									im2merge.plotLineMerge(im2merge.getUx(),im2merge.getUy(), imfVec[selectedImFVec[0]].f.images[i], imfVec[selectedImFVec[1]].f.images[i]);
+
+									SDL_Surface* source = im2merge.imOut.getSurface();
+									SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
+										source->w, source->h, source->format->BitsPerPixel, source->format->format);
+									if (destination != nullptr) {
+										SDL_BlitSurface(source, nullptr, destination, nullptr);
+									}
+
+									Image imseged;
+									imseged.setSurface(destination);
+									imseged.textureFromSurface();
+
+									savedFolder.images.push_back(imseged);
+								}
+							}
+							im2merge.setImage(segedFolder.images[0]);
+							im2merge.plotLineMerge(im2merge.getUx(),im2merge.getUy(), imfVec[selectedImFVec[0]].f.images[0], imfVec[selectedImFVec[1]].f.images[0]);
 						}
 
-						StoredOperaionsClass::storedOperation segedOp;
-						segedOp.ote = StoredOperaionsClass::oteImage2Merge;
-						segedOp.i2m = im2merge;
+						/*StoredOperaionsClass::storedOperation segedOp;
+						segedOp.ote = StoredOperaionsClass::oteImage2SSIM;
+						segedOp.i2s = im2ssim;
 						for (int i = 0; i < segedFolder.images.size(); i++) {
 							segedOp.affectedElements.push_back(i);
 						}
 						segedStoredOperationsClass.storedOperationsElement.push_back(segedOp);
-						storedOperationsVector.push_back(segedStoredOperationsClass);
+						storedOperationsVector.push_back(segedStoredOperationsClass);*/
 
 						ImageFolder imfseged;
-						imfseged.iof = iofFolder;
+						imfseged.iof == iofFolder;
 						imfseged.f = segedFolder;
 
 						imfVec.push_back(imfseged);
@@ -1984,13 +2085,14 @@ void CMyApp::Render()
 
 		default:
 		{
+			Back();
 			break;
 		}
 	}
 
 	ImGui::NewLine();
 
-	if (ImGui::BeginPopupModal("Load##Pop", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	/*if (ImGui::BeginPopupModal("Load##Pop", NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Text("The image has been loaded.");
 		if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
@@ -2009,7 +2111,7 @@ void CMyApp::Render()
 		ImGui::Text("The image has been saved.");
 		if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
 		ImGui::EndPopup();
-	}
+	}*/
 
 	ImGui::End();
 }
@@ -2022,7 +2124,7 @@ void CMyApp::Back() {
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Colors[ColorEnum::BUTTON_RED_HOVERED]);
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Colors[ColorEnum::BUTTON_RED_ACTIVE]);
 	if (ImGui::Button("Back", ImVec2(150, 50))) {
-		currentImageEnum = SEMMIENUM;
+		currentImageEnum = OPERATIONSENUM;
 	}
 	ImGui::PopStyleColor(3);
 	imFo->Scale = 1.f;
@@ -2055,6 +2157,510 @@ void CMyApp::PushStyleColorGreenButton() {
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, Colors[ColorEnum::BUTTON_GREEN_ACTIVE]);
 }
 
+void CMyApp::TestMethod() {
+
+	//1.1
+	char* white = "White.jpg";
+
+	im0load.setLoadType(Image0FromFile::PICTURE);
+	ImageFolder whiteTest = im0load.Load(white);
+
+	if (whiteTest.im.getSurface() != nullptr) {
+		std::cout << "1.1 Success" << std::endl;
+	}
+
+	//1.2
+	char* folder = "TestImages";
+	bool success = true;
+
+	im0load.setLoadType(Image0FromFile::FOLDER);
+	ImageFolder folderTest = im0load.Load(folder);
+
+	if (folderTest.f.images.size() == 0) {
+		success == false;
+	}
+	for (Image i : folderTest.f.images) {
+		if (i.getSurface() == nullptr) {
+			success = false;
+		}
+	}
+
+	if (success) {
+		std::cout << "1.2 Success" << std::endl;
+	}
+	success = true;
+	
+	//1.3
+	char* incorrect = "IncorrectPath.jpg";
+
+	im0load.setLoadType(Image0FromFile::PICTURE);
+	ImageFolder incorrectTest = im0load.Load(incorrect);
+
+	if (incorrectTest.iof == iofEmpty) {
+		std::cout << "1.3 Success" << std::endl;
+	}
+
+	//2
+	ImColor white2 = ImColor(255, 255, 255, 255);
+	ImColor black2 = ImColor(0, 0, 0, 255);
+
+	im0stat.StaticMethod();
+	if (im0stat.staticnoise.getSurface()->w != im0stat.width || im0stat.staticnoise.getSurface()->h != im0stat.height) {
+		success = false;
+	}
+
+	for (int i = 0; i < im0stat.width; i++) {
+		for (int j = 0; j < im0stat.height; j++) {
+			if (SurfaceModify::GetColor(i, j, im0stat.staticnoise.getSurface()) != white2 && SurfaceModify::GetColor(i, j, im0stat.staticnoise.getSurface()) != black2  )   {
+				success = false;
+			}
+		}
+	}
+
+	Image staticBlackWhite2 = im0stat.staticnoise;
+
+	if (success) {
+		std::cout << "2 Success" << std::endl;
+	}
+	success = true;
+
+	//3
+	ImColor red3 = ImColor(255, 0, 0, 255);
+
+	im1mag.setImage(whiteTest.im);
+	im1mag.MagnifyMethod(whiteTest.im);
+
+	if (SurfaceModify::GetColor(0, 0, im1mag.imOut.getSurface()) == red3) {
+		std::cout << "3 Success" << std::endl;
+	}
+
+	//4.1
+	im1blur.blurSize = 5;
+	im1blur.blurType = 0;
+	im1blur.setImage(staticBlackWhite2);
+	im1blur.BlurMethod(staticBlackWhite2);
+	Uint8 r4, g4, b4;
+
+	for (int i = 0; i < im1blur.imOut.getSurface()->w ; i++) {
+		for (int j = 0; j < im1blur.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i,j, im1blur.imOut.getSurface()), im1blur.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (r4!=b4 || b4!=g4) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "4.1 Success" << std::endl;
+	}
+	success = true;
+
+	//4.2
+	//im1blur.blurSize = 5;
+	im1blur.blurType = 1;
+	//im1blur.setImage(staticBlackWhite2);
+	im1blur.BlurMethod(staticBlackWhite2);
+	//Uint8 r4, g4, b4;
+
+	for (int i = 0; i < im1blur.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1blur.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im1blur.imOut.getSurface()), im1blur.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (r4 != b4 || b4 != g4) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "4.2 Success" << std::endl;
+	}
+	success = true;
+
+	//5.1
+	im1col.imctype = im1col.ImageColorType::GreyScale;
+	im1col.setImage(staticBlackWhite2);
+	im1col.ColorMethod(staticBlackWhite2);
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			if (SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != SurfaceModify::GetColor(i, j, staticBlackWhite2.getSurface())) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "5.1 Success" << std::endl;
+	}
+	success = true;
+
+	//5.2
+	im0stat.width = whiteTest.im.getSurface()->w;
+	im0stat.height = whiteTest.im.getSurface()->h;
+
+	im0stat.StaticMethod();
+	Image staticBlackWhite5 = im0stat.staticnoise;
+
+	im0stat.color[0] =  ImColor(255, 0, 0, 255);
+	im0stat.StaticMethod();
+	Image staticRedWhite5 = im0stat.staticnoise;
+
+	//im1col.imctype = im1col.ImageColorType::GreyScale;
+	im1col.setImage(staticRedWhite5);
+	im1col.ColorMethod(staticRedWhite5);
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()), im1col.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (r4 != b4 || b4 != g4) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "5.2 Success" << std::endl;
+	}
+	success = true;
+
+	//5.3.a
+	ImColor red5 = ImColor(255, 0, 0, 255);
+	im1col.imctype = im1col.ImageColorType::Red;
+	im1col.setImage(whiteTest.im);
+	im1col.ColorMethod(whiteTest.im);
+
+	//std::cout << SurfaceModify::GetColor(5, 5, im1col.imOut.getSurface()) << "  " << red5 << std::endl;
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			if (SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != red5) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "5.3.a Success" << std::endl;
+	}
+	success = true;
+
+	//5.3.b
+	ImColor green5 = ImColor(0, 255, 0, 255);
+	im1col.imctype = im1col.ImageColorType::Green;
+	//im1col.setImage(whiteTest.im);
+	im1col.ColorMethod(whiteTest.im);
+		
+	//std::cout << SurfaceModify::GetColor(5, 5, im1col.imOut.getSurface()) << "  " << green5 << std::endl;
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			if (SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != green5) {
+				success = false;
+				//std::cout << SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) << std::endl;
+			}
+		}
+	}
+
+
+
+	if (success) {
+		std::cout << "5.3.b Success" << std::endl;
+	}
+	success = true;
+
+	//5.3.c
+	ImColor blue5 = ImColor(0, 0, 255, 255);
+	im1col.imctype = im1col.Blue;
+	//im1col.setImage(whiteTest.im);
+	im1col.ColorMethod(whiteTest.im);
+
+	//std::cout << SurfaceModify::GetColor(5, 5, im1col.imOut.getSurface()) << "  " << blue5 << std::endl;
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			if (SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != blue5) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "5.3.c Success" << std::endl;
+	}
+	success = true;
+
+	//5.4
+	im1col.imctype = im1col.Inverted;
+	im1col.setImage(staticBlackWhite2);
+	im1col.ColorMethod(staticBlackWhite2);
+
+	for (int i = 0; i < im1col.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im1col.imOut.getSurface()->h; j++) {
+
+			if (!((SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) == white2 && SurfaceModify::GetColor(i, j, staticBlackWhite2.getSurface()) == black2) || (SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) == black2 && SurfaceModify::GetColor(i, j, staticBlackWhite2.getSurface()) == white2)) ||
+				(SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != white2 && SurfaceModify::GetColor(i, j, im1col.imOut.getSurface()) != black2)) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "5.4 Success" << std::endl;
+	}
+	success = true;
+
+	//6.1
+	im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(0);
+
+	im2ssim.SSIMSurface(staticRedWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (r4 != b4 || b4 != g4 || (SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface())==white2 && SurfaceModify::GetColor(i, j, staticRedWhite5.getSurface())!=white2 )) {
+				success = false;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "6.1 Success" << std::endl;
+	}
+	success = true;
+
+	//6.2.a
+	//im2ssim.setImage(staticBlackWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(1);
+
+	im2ssim.SSIMSurface(staticBlackWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		//std::cout << SurfaceModify::GetColor(i, 1, staticBlackWhite5.getSurface()) << "  " << red5 << std::endl;
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (//(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) != white2) ||
+				(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && (r4!=255))) {
+				success = false;
+				//std::cout << SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) << std::endl;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "6.2.a Success" << std::endl;
+	}
+	success = true;
+
+	//6.2.b
+    //im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(2);
+
+	im2ssim.SSIMSurface(staticBlackWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (//(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) != white2) ||
+				(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && (g4 != 255))) {
+				success = false;
+				//std::cout << SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) << std::endl;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "6.2.b Success" << std::endl;
+	}
+	success = true;
+
+	//6.2.c
+   //im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(3);
+
+	im2ssim.SSIMSurface(staticBlackWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (//(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) != white2) ||
+				(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && (b4 != 255))) {
+				success = false;
+				//std::cout << SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) << std::endl;
+			}
+		}
+	}
+
+	if (success) {
+		std::cout << "6.2.c Success" << std::endl;
+	}
+	success = true;
+
+	//6.3
+   //im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(4);
+
+	im2ssim.SSIMSurface(staticRedWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			if (SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()) != SurfaceModify::GetColor(i, j, staticRedWhite5.getSurface())) {
+				success = false;
+			}
+			
+		}
+	}
+
+	if (success) {
+		std::cout << "6.3 Success" << std::endl;
+	}
+	success = true;
+
+	//6.4
+	//im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(1);
+	im2ssim.setSsimColor(5);
+
+	im2ssim.SSIMSurface(staticBlackWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if ((SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == white2 && b4 - (g4 + r4) < 245) ||
+				(SurfaceModify::GetColor(i, j, staticBlackWhite5.getSurface()) == black2 && r4 - (g4 + b4) < 245)) {
+				success = false;
+			}
+
+		}
+	}
+
+	if (success) {
+		std::cout << "6.4 Success" << std::endl;
+	}
+	success = true;
+
+	//6.5
+	//im2ssim.setImage(staticRedWhite5);
+
+	im2ssim.setSsimSize(5);
+	im2ssim.setSsimColor(0);
+
+	im2ssim.SSIMSurface(staticBlackWhite5, whiteTest.im);
+
+	for (int i = 0; i < im2ssim.imOut.getSurface()->w; i++) {
+		for (int j = 0; j < im2ssim.imOut.getSurface()->h; j++) {
+
+			SDL_GetRGB(SurfaceModify::GetColor(i, j, im2ssim.imOut.getSurface()), im2ssim.imOut.getSurface()->format, &r4, &g4, &b4);
+			if (r4 != b4 || b4 != g4) {
+				success = false;
+			}
+
+		}
+	}
+
+	if (success) {
+		std::cout << "6.5 Success" << std::endl;
+	}
+	success = true;
+
+	//7.1
+	char* blackchar = "Black.jpg";
+	im0load.setLoadType(Image0FromFile::PICTURE);
+	ImageFolder blackTest = im0load.Load(blackchar);
+
+	im2merge.setImage(whiteTest.im);
+	im2merge.setSlope(0);
+	im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), blackTest.im, whiteTest.im);
+
+	if (SurfaceModify::GetColor(0, 0, im2merge.imOut.getSurface()) != black2 || SurfaceModify::GetColor(im2merge.imOut.getSurface()->w-1, im2merge.imOut.getSurface()->h-1, im2merge.imOut.getSurface()) != white2) {
+		success = false;
+	}
+
+	if (success) {
+		std::cout << "7.1 Success" << std::endl;
+	}
+	success = true;
+
+	//7.2
+	//im2merge.setImage(whiteTest.im);
+	im2merge.setSlope(180);
+	im2merge.plotLineMerge(im2merge.getUx(), im2merge.getUy(), blackTest.im, whiteTest.im);
+
+	if (SurfaceModify::GetColor(0, 0, im2merge.imOut.getSurface()) != white2 || SurfaceModify::GetColor(im2merge.imOut.getSurface()->w-1, im2merge.imOut.getSurface()->h-1, im2merge.imOut.getSurface()) != black2) {
+		success = false;
+	}
+
+	if (success) {
+		std::cout << "7.2 Success" << std::endl;
+	}
+	success = true;
+
+	//8.1
+
+	if (im1sav.Save(whiteTest.im, "SaveTest/save.png")) {
+		std::cout << "8.1 Success" << std::endl;
+	}
+
+	//8.2
+
+	if (im1sav.Save(whiteTest.im, "SaveTest") == false) {
+		std::cout << "8.2 Success" << std::endl;
+	}
+
+	//8.3
+
+	if (im1sav.Save(whiteTest.im, "NotValidPath/save.png") == false) {
+		std::cout << "8.3 Success" << std::endl;
+	}
+
+	//8.4
+
+	int n = 1;
+	if (im1sav.SaveFolder(folderTest.f, "SaveTest",n)) {
+		std::cout << "8.4 Success" << std::endl;
+	}
+
+	//8.5
+
+	if (im1sav.SaveFolder(folderTest.f, "SaveTest/save2.png",n) == false) {
+		std::cout << "8.5 Success" << std::endl;
+	}
+
+	//8.6
+
+	if (im1sav.SaveFolder(folderTest.f, "NotValidPath", n) == false) {
+		std::cout << "8.6 Success" << std::endl;
+	}
+
+} 
+
+//but not only black-white
+
 Image::~Image(void) {
 	/*
 	if (surface != nullptr) {
@@ -2071,6 +2677,7 @@ Image::~Image(void) {
 void Image::setSurface(SDL_Surface* surface) {
 	if (this->surface != nullptr) {
 		//SDL_FreeSurface(this->surface);
+		//this->surface = nullptr;
 		printf("s");
 	}
 	this->surface = surface;
@@ -2116,9 +2723,11 @@ void Image::editableDrawImage() {
 	ImGui::Image((void*)(intptr_t)texture, ImVec2(surface->w, surface->h));
 }
 
-Folder::Folder(void){}
+Folder::Folder(void){
+	iconN = 0;
+}
 
-bool Folder::Load(char* s) {
+/*bool Folder::Load(char* s) {
 	Image sizeVerify = Image0FromFile::Load(s);
 	if (sizeVerify.getSurface()!=NULL && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
 		images.push_back(sizeVerify);
@@ -2127,7 +2736,7 @@ bool Folder::Load(char* s) {
 	else {
 		return false;
 	}
-}
+}*/
 
 void Folder::Append(Image app) {
 	images.push_back(app);
@@ -2140,7 +2749,7 @@ void Folder::Append(Folder app) {
 }
 
 void Folder::createIconImageFromImages() {
-	SDL_Surface* source = images[0].getSurface();
+	SDL_Surface* source = images[iconN].getSurface();
 	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 		source->w, source->h, source->format->BitsPerPixel, source->format->format);
 	if (destination != nullptr) {
@@ -2163,11 +2772,91 @@ Image0FromFile::Image0FromFile(void) {
 	loadType = loadTypeEnum::PICTURE;
 }
 
-Image Image0FromFile::Load(char* s) {
-	Image im;
-	im.setSurface(IMG_Load(s));
-	im.textureFromSurface();
-	return im;
+ImageFolder Image0FromFile::Load(char* s) {
+	ImageFolder imfo;
+	//-----------
+
+	switch (loadType)
+	{
+	case Image0FromFile::loadTypeEnum::PICTURE: {
+
+		if (RegularModify::Verify(s)) {
+			Image sizeVerify;
+			sizeVerify.setSurface(IMG_Load(s));
+			if (sizeVerify.getSurface() != nullptr && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
+				sizeVerify.textureFromSurface();
+				imfo.im = sizeVerify;
+				imfo.iof = iofImage;
+			}
+			else {
+				ImGui::OpenPopup("Load##InvalidSize");
+			}
+
+		}
+		else {
+			//ImGui::OpenPopup("Load##InvalidPath");  nake popups toggleable!!!!!!!!!
+		}
+		break;
+	}
+
+	case Image0FromFile::loadTypeEnum::FOLDER: {
+
+		Folder fold;
+		std::string path = s;
+		path += "/*";
+		std::string path2 = s;
+
+		WIN32_FIND_DATAA ffd;
+		HANDLE hFind = FindFirstFileA(path.c_str(), &ffd);
+
+		if (hFind == INVALID_HANDLE_VALUE) {
+			ImGui::OpenPopup("Load##InvalidPath");
+			break;
+		}
+
+		while (FindNextFileA(hFind, &ffd) != 0)
+		{
+			std::string seged = path2 + "/" + (std::string)ffd.cFileName;
+			char* cstr = new char[seged.size() + 1];
+			std::strcpy(cstr, seged.c_str());
+
+			if (RegularModify::Verify(cstr)) {
+
+				Image sizeVerify;
+				sizeVerify.setSurface(IMG_Load(cstr));
+				if (sizeVerify.getSurface() != nullptr && sizeVerify.getSurface()->h > 10 && sizeVerify.getSurface()->w > 10) {
+					fold.images.push_back(sizeVerify);
+				}
+				else {
+					ImGui::OpenPopup("Load##FolderInvalidSize");
+				}
+			}
+			delete[] cstr;
+		}
+		FindClose(hFind);
+
+		if (fold.images.size() == 0) {
+			ImGui::OpenPopup("Load##EmptyFolder");
+		}
+		else {
+
+			for (int i = 0; i < fold.images.size();i++) {
+				fold.images[i].textureFromSurface();
+			}
+
+			fold.createIconImageFromImages();
+
+			imfo.f = fold;
+			imfo.iof = iofFolder;
+		}
+
+		break;
+	}
+	default:
+		break;
+	}
+
+	return imfo;
 }
 
 Image0StaticNoise::Image0StaticNoise(void) {
@@ -2288,11 +2977,25 @@ void Image1Magnify::editableDrawImage(Image im) {
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 
 	ImGui::Image((void*)(intptr_t)imOut.getTexture(), ImVec2(imOut.getSurface()->w, imOut.getSurface()->h));
-	if (ImGui::IsItemHovered())
+	if (ImGui::IsItemClicked()) {
+		if (io.MousePos.x - pos.x >= (im.getSurface()->w - bigX) - zoomW * zoomTimes && io.MousePos.x - pos.x <= (im.getSurface()->w - bigX) && io.MousePos.y - pos.y >= (im.getSurface()->h - bigY) - zoomH * zoomTimes && io.MousePos.y - pos.y <= (im.getSurface()->h - bigY)) {
+			smallChange = false;
+			upd = true;
+		}
+		else if (io.MousePos.x - pos.x <= smallX + zoomW && io.MousePos.x - pos.x >= smallX && io.MousePos.y - pos.y <= smallY + zoomH && io.MousePos.y - pos.y >= smallY) {
+			smallChange = true;
+			upd = true;
+		}
+		else {
+			upd = false;
+		}
+	}
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
 	{
 		if (upd) {
 
 			MagnifyMethod(im);
+
 
 			float focus_sz_x = 0.f;
 			float focus_sz_y = 0.f;
@@ -2326,12 +3029,12 @@ void Image1Magnify::editableDrawImage(Image im) {
 			}
 		}
 	}
-	else {
+	/*else {
 		upd = false;
 	}
 	if (ImGui::IsItemClicked()) {
 		upd = !upd;
-	}
+	}*/
 }
 
 //Draws
@@ -2512,6 +3215,27 @@ void Image1Color::ColorMethod(Image im) { //sometimes red line???
 					SurfaceModify::PutPixel32(i, j, grey32 , imOut.getSurface());
 					break;
 				}
+				case Red: {
+					Uint8 red8,g,b,alpha8;
+					SDL_GetRGBA(SurfaceModify::GetColor(i, j, im.getSurface()), im.getSurface()->format, &red8,&g,&b,&alpha8);
+					Uint32 grey32 = (red8 << 0) | (0 << 8) | (0 << 16) | (alpha8 << 24);
+					SurfaceModify::PutPixel32(i, j, grey32, imOut.getSurface());
+					break;
+				}
+				case Green: {
+					Uint8 r, green8, b, alpha8;
+					SDL_GetRGBA(SurfaceModify::GetColor(i, j, im.getSurface()), im.getSurface()->format, &r, &green8, &b, &alpha8);
+					Uint32 grey32 = (0 << 0) | (green8 << 8) | (0 << 16) | (alpha8 << 24);
+					SurfaceModify::PutPixel32(i, j, grey32, imOut.getSurface());
+					break;
+				}
+				case Blue: {
+					Uint8 r, g, blue8, alpha8;
+					SDL_GetRGBA(SurfaceModify::GetColor(i, j, im.getSurface()), im.getSurface()->format, &r, &g, &blue8, &alpha8);
+					Uint32 grey32 = (0 << 0) | (0 << 8) | (blue8 << 16) | (alpha8 << 24);
+					SurfaceModify::PutPixel32(i, j, grey32, imOut.getSurface());
+					break;
+				}
 				case Inverted: {
 					Uint8 r, g, b, a;
 					SDL_GetRGBA(SurfaceModify::GetColor(i, j, im.getSurface()), im.getSurface()->format, &r, &g, &b, &a);
@@ -2528,8 +3252,8 @@ void Image1Color::ColorMethod(Image im) { //sometimes red line???
 	imOut.textureFromSurface();
 }
 
-void Image1Save::SaveFolder(Folder f, char* cstr, int j, StoredOperaionsClass storedOperationsVector) { //todo: get every image here in here
-	SDL_Surface* source = f.images[j].getSurface();
+bool Image1Save::SaveFolder(Folder f, std::string path, int n/*, StoredOperaionsClass storedOperationsVector*/) { //todo: get every image here in here
+	/*SDL_Surface* source = f.images[j].getSurface();
 	SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
 		source->w, source->h, source->format->BitsPerPixel, source->format->format);
 	if (destination != nullptr) {
@@ -2617,7 +3341,38 @@ void Image1Save::SaveFolder(Folder f, char* cstr, int j, StoredOperaionsClass st
 
 		}
 	}
-	IMG_SavePNG(imOut.getSurface(), cstr);
+	IMG_SavePNG(imOut.getSurface(), cstr);*/
+	struct stat sb;
+	bool allSucceeded=true;
+
+	for (int i = 0; i < f.images.size(); i++) {
+		std::string seged = path + "/image" + std::to_string(n) + ".png";
+		char* cstr = new char[seged.size() + 1];
+		std::strcpy(cstr, seged.c_str());
+
+		if (IMG_SavePNG(f.images[i].getSurface(), cstr) != 0) {
+			allSucceeded = false;
+		}
+
+		if (stat(cstr, &sb) != 0) {
+			allSucceeded = false;
+		}
+
+		delete[] cstr;
+		n++;
+	}
+
+	return allSucceeded;
+}
+
+bool Image1Save::Save(Image im, char* cstr) {
+	struct stat sb;
+	
+	if (IMG_SavePNG(im.getSurface(), cstr) != 0) {
+		return false;
+	}
+
+	return stat(cstr, &sb) == 0;
 }
 
 Image2::Image2(void) {}
@@ -2710,40 +3465,9 @@ void Image2SSIM::editableDrawImage() {
 void Image2SSIM::SSIMSurface(Image im1, Image im2) {
 
 	//SDL_LockSurface(ssimSurface);
+	//			SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format, &r, &g, &b, &a);
+	//			SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format, &r2, &g2, &b2, &a2);
 
-/*	std::vector<std::vector<colorsStruckt>> colorVect(ssimSize);
-	for (int i = 0; i < ssimSize; i++) {
-		colorVect[i].resize(ssimSize);
-	}
-*/
-
-	/*std::vector<std::vector<colorsStruckt*>> colorVect2(ssimSize);
-	for (int i = 0; i < ssimSize; i++) {
-		colorVect[i].resize(ssimSize);
-	}*/
-
-	//std::vector<std::vector<colorsStruckt*>> colorVect2(ssimSize, std::vector<colorsStruckt*>(ssimSize)); 
-
-	std::vector<std::vector<Uint32>> colorVectFinal1(ssimSize, std::vector<Uint32>(ssimSize));
-	std::vector<std::vector<Uint32>> colorVectFinal2(ssimSize, std::vector<Uint32>(ssimSize));
-
-	//const int seged = ssimSize;
-	//std::array<std::array<Uint32,seged)>,seged> colorVectFinal1(ssimSize, std::vector<Uint32>(ssimSize));
-
-	//std::vector<std::vector<Uint8>> colorVectFinal1(ssimSize, std::vector<Uint8>(ssimSize));
-	//std::vector<std::vector<Uint8>> grey2(ssimSize, std::vector<Uint8>(ssimSize));
-
-	//std::vector<std::vector<Uint8>> red1(ssimSize, std::vector<Uint8>(ssimSize));
-	//std::vector<std::vector<Uint8>> red2(ssimSize, std::vector<Uint8>(ssimSize));
-
-	//std::vector<std::vector<Uint8>> green1(ssimSize, std::vector<Uint8>(ssimSize));
-	//std::vector<std::vector<Uint8>> green2(ssimSize, std::vector<Uint8>(ssimSize));
-
-	//std::vector<std::vector<Uint8>> blue1(ssimSize, std::vector<Uint8>(ssimSize));
-	//std::vector<std::vector<Uint8>> blue2(ssimSize, std::vector<Uint8>(ssimSize));
-
-	//std::vector<std::vector<Uint8>> alpha1(ssimSize, std::vector<Uint8>(ssimSize));
-	//std::vector<std::vector<Uint8>> alpha2(ssimSize, std::vector<Uint8>(ssimSize));
 
 	ssimOsszeg = 0.f;
 	int num = 0;
@@ -2751,27 +3475,81 @@ void Image2SSIM::SSIMSurface(Image im1, Image im2) {
 	for (int x = 0; x < imOut.getSurface()->w; x += ssimSize) {
 		for (int y = 0; y < imOut.getSurface()->h; y += ssimSize) {
 
+			static float mean1[colorResult::NumberOfTypes]{};
+			static float mean2[colorResult::NumberOfTypes]{};
+			static float var1[colorResult::NumberOfTypes]{};
+			static float var2[colorResult::NumberOfTypes]{};
+			static float covar[colorResult::NumberOfTypes]{};
+			for (int i = 0; i < colorResult::NumberOfTypes; i++) {
+				mean1[i] = mean2[i] = var1[i] = var2[i] = covar[i] = 0.0f;
+			}
 
+			//mean
 			for (int i = 0; i < ssimSize; i++) {
 				for (int j = 0; j < ssimSize ; j++) {
 
-		//			SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format, &r, &g, &b, &a);
-		//			SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format, &r2, &g2, &b2, &a2);
-
-					//grey1[i][j] = RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, imIn1.getSurface()), imIn1.getSurface()->format);
-					//grey2[i][j] = RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, imIn2.getSurface()), imIn2.getSurface()->format);
-
-					colorVectFinal1[i][j] = SurfaceModify::GetColor(x + i, y + j, im1.getSurface());
-					colorVectFinal2[i][j] = SurfaceModify::GetColor(x + i, y + j, im2.getSurface());
-
+					Uint8 seged1[colorResult::NumberOfTypes]{};
+					Uint8 seged2[colorResult::NumberOfTypes]{};
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, im1.getSurface()), im1.getSurface()->format, &seged1[colorResult::Red], &seged1[colorResult::Green], &seged1[colorResult::Blue], &seged1[colorResult::Alpha]);
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, im2.getSurface()), im2.getSurface()->format, &seged2[colorResult::Red], &seged2[colorResult::Green], &seged2[colorResult::Blue], &seged2[colorResult::Alpha]);
+					for (int k = 0; k < colorResult::NumberOfTypes; k++) { //r g b a
+						if (k != colorResult::Grey) {
+							mean1[k] += seged1[k];
+							mean2[k] += seged2[k];
+						}
+					}
+					mean1[colorResult::Grey] += RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, im1.getSurface()), im1.getSurface()->format);
+					mean2[colorResult::Grey] += RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, im2.getSurface()), im2.getSurface()->format);
 
 				}
 			}
+			for (int i = 0; i < colorResult::NumberOfTypes; i++) {
+				mean1[i] /= pow(ssimSize, 2);
+				mean2[i] /= pow(ssimSize, 2);
+			}
+
+			//var
+			for (int i = 0; i < ssimSize; i++) {
+				for (int j = 0; j < ssimSize; j++) {
+					Uint8 seged1[colorResult::NumberOfTypes]{};
+					Uint8 seged2[colorResult::NumberOfTypes]{};
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, im1.getSurface()), im1.getSurface()->format, &seged1[colorResult::Red], &seged1[colorResult::Green], &seged1[colorResult::Blue], &seged1[colorResult::Alpha]);
+					SDL_GetRGBA(SurfaceModify::GetColor(x + i, y + j, im2.getSurface()), im2.getSurface()->format, &seged2[colorResult::Red], &seged2[colorResult::Green], &seged2[colorResult::Blue], &seged2[colorResult::Alpha]);
+					for (int k = 0; k < colorResult::NumberOfTypes - 1; k++) { //r g b a
+						var1[k] += (seged1[k] - mean1[k]);
+						var2[k] += (seged2[k] - mean2[k]);
+					}
+					var1[colorResult::Grey] += (RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, im1.getSurface()), im1.getSurface()->format) - mean1[colorResult::Grey]);
+					var2[colorResult::Grey] += (RegularModify::greyScale(SurfaceModify::GetColor(x + i, y + j, im2.getSurface()), im2.getSurface()->format) - mean2[colorResult::Grey]);
+				}
+			}
+			for (int i = 0; i < colorResult::NumberOfTypes; i++) {
+				var1[i] /= pow(ssimSize, 2);
+				var2[i] /= pow(ssimSize, 2);
+			}
+
+			//covar
+			for (int i = 0; i < ssimSize; i++) {
+				for (int j = 0; j < ssimSize; j++) {
+					for (int k = 0; k < colorResult::NumberOfTypes; k++) {
+						covar[k] += (var1[k] * var2[k]);
+					}
+				}
+			}
+			for (int i = 0; i < colorResult::NumberOfTypes; i++) {
+				covar[i] /= pow(ssimSize, 2);
+			}
+
+			//end
+			static std::vector<float> resultFinal(colorResult::NumberOfTypes);
+
+			for (int i = 0; i < colorResult::NumberOfTypes; i++) {
+				resultFinal[i] = ((2 * mean1[i] * mean2[i] + C1) * (2 * covar[i] + C2)) / ((pow(mean1[i], 2) + pow(mean2[i], 2) + C1) * (pow(var1[i], 2) + pow(var2[i], 2) + C2));
+			}
+			
 
 			Uint32 putColor{};
 			Uint8 seged;
-
-			std::vector<float> resultFinal = SSIMmethod(colorVectFinal1, colorVectFinal2,im1,im2);
 
 			switch (ssimColor)
 			{
@@ -3004,7 +3782,15 @@ void Image2Merge::plotLineMerge(int x, int y, Image im1, Image im2) {
 
 
 void SurfaceModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
-	if (abs(y1 - y0) < abs(x1 - x0)) {
+
+	if ( (abs(y1 - y0) < abs(x1 - x0) && x0 > x1) || (abs(y1 - y0) >= abs(x1 - x0)) && (y0 > y1)){
+		plotLineMixed(x1, y1, x0, y0, sur);
+	}
+	else {
+		plotLineMixed(x0, y0, x1, y1, sur);
+	}
+}
+	/*if (abs(y1 - y0) < abs(x1 - x0)) {
 		if (x0 > x1) {
 			plotLineLow(x1, y1, x0, y0, sur);
 		}
@@ -3019,8 +3805,9 @@ void SurfaceModify::plotLine(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
 		else {
 			plotLineHigh(x0, y0, x1, y1, sur);
 		}
-	}
-}
+	}*/
+
+
 
 void SurfaceModify::plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur){
 	int dx = x1 - x0;
@@ -3043,6 +3830,52 @@ void SurfaceModify::plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur
 		}
 		else{
 			D = D + 2 * dy;
+		}
+	}
+}
+
+void SurfaceModify::plotLineMixed(int x0, int y0, int x1, int y1, SDL_Surface* sur) {
+	int dBig,dSmall;
+	int from,to,otherAxis;
+	int i = 1;
+
+	if(abs(y1 - y0) < abs(x1 - x0)){
+		dBig = x1 - x0;
+		dSmall = y1 - y0;
+		from = x0;
+		to = x1;
+		otherAxis = y0;
+
+	}
+	else {
+		dBig = y1 - y0;
+		dSmall = x1 - x0;
+		from = y0;
+		to = y1;
+		otherAxis = x0;
+	}
+
+	if (dSmall < 0) {
+		i = -1;
+		dSmall = -dSmall;
+	}
+
+	int D = (2 * dSmall) - dBig;
+
+	for (int f = from; f < to; f++) {
+		if (abs(y1 - y0) < abs(x1 - x0)) {
+			PutPixel32(f, otherAxis, (255 << 24) | (0 << 16) | (0 << 8) | 255, sur);
+		}
+		else {
+			PutPixel32(otherAxis, f, (255 << 24) | (0 << 16) | (0 << 8) | 255, sur);
+		}
+
+		if (D > 0) {
+			otherAxis = otherAxis + i;
+			D = D + (2 * (dSmall - dBig));
+		}
+		else {
+			D = D + 2 * dSmall;
 		}
 	}
 }
@@ -3089,7 +3922,16 @@ void SurfaceModify::PutPixel32_nolock(int x, int y, Uint32 color, SDL_Surface* s
 }
 
 Uint32 SurfaceModify::GetColor(int x, int y, SDL_Surface* sur) {
-	return *(Uint32*)((Uint8*)sur->pixels + y * sur->pitch + x * sur->format->BytesPerPixel);
+
+	Uint8* pixelPtr = (Uint8*)sur->pixels+ y * sur->pitch+ x * sur->format->BytesPerPixel;
+
+	// Read 32-bit pixel value
+	Uint32 pixel = *(Uint32*)pixelPtr;
+
+	Uint8 r, g, b, a;
+	SDL_GetRGBA(pixel, sur->format, &r, &g, &b, &a);
+	
+	return ImColor(r, g, b, a);
 }
 
 
@@ -3134,10 +3976,10 @@ Uint32 RegularModify::heatmapColor(float value) {
 		b = static_cast<int>(255 * (value / 0.5f));
 	}
 
-	return (r << 24) + (g << 16) + (b << 8);
+	return (r << 24) + (g << 16) + (b << 8) ;
 }
 
-bool RegularModify::Verify(char* filePath, char* filePathv) {
+bool RegularModify::Verify(char* filePath) {
 
 	SDL_Surface* imageSurface = IMG_Load(filePath);
 	if (!imageSurface) {
@@ -3145,9 +3987,7 @@ bool RegularModify::Verify(char* filePath, char* filePathv) {
 		strcpy(filePathv, "texture.bmp");*/
 		return false;
 	}
-	else {
-		strcpy(filePathv, filePath);
-	}
+
 	/*if (!imageSurface) {
 		printf("Failed to load image (also backup image got deleted): %s\n", IMG_GetError());
 		return false;

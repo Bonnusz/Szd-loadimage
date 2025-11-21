@@ -172,7 +172,7 @@ int main(int argc, char* args[])
 		}
 		ImGui_ImplSdlGL3_NewFrame(win); //Ezután lehet imgui parancsokat hívni az ImGui::Render()-ig
 
-		app.Update();
+		//app.Update();
 		app.Render();
 		ImGui::Render();
 

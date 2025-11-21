@@ -21,9 +21,9 @@ public:
 	GLuint getTexture() { return texture; }
 	void textureFromSurface();
 
-	void drawImage();
+	void drawImage(); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	void drawImage(int size, bool selected);
-	virtual void editableDrawImage();
+	virtual void editableDrawImage(); //check
 
 protected:
 	SDL_Surface* surface = nullptr;
@@ -31,16 +31,20 @@ protected:
 
 };
 
-class Folder : public Image {
+class Folder : public Image { //rm from image
 public:
 	Folder(void);
-	bool Load(char* s);
+	//bool Load(char* s);
 	void Append(Image app);
 	void Append(Folder app);
 	void createIconImageFromImages();
 
 	std::vector<Image> images;
+	int iconN;
 };
+
+enum imageOrFolder { iofImage, iofFolder, iofEmpty };
+struct ImageFolder { Image im; Folder f; imageOrFolder iof = iofEmpty; };
 
 class Operations{};
 
@@ -51,7 +55,7 @@ class Image0 : public Operations{
 class Image0FromFile : public Image0 {
 public:
 	Image0FromFile(void);
-	static Image Load(char* s);
+	ImageFolder Load(char* s);
 	enum loadTypeEnum { PICTURE, FOLDER };
 
 	int getLoadType() { return loadType; }
@@ -127,6 +131,7 @@ public:
 	void Reset();
 	void BlurMethod(Image im);
 
+	//enum!!!!!!!!!!!!!
 	int blurType;
 	int blurSize;
 protected:
@@ -139,13 +144,10 @@ public:
 	void Reset();
 	void ColorMethod(Image im);
 
-	enum ImageColorType {Null,GreyScale,Inverted};  //+null?
+	enum ImageColorType {Null,GreyScale,Red,Green,Blue,Inverted};  //+null?
 
 	int imctype;
 };
-
-enum imageOrFolder { iofImage, iofFolder };
-struct ImageFolder { Image im; Folder f; imageOrFolder iof = iofImage; };
 
 class Image2 : public Operations {
 public:
@@ -208,16 +210,17 @@ protected:
 	int ux, uy;
 };
 
-class StoredOperaionsClass {
+/*class StoredOperaionsClass {
 public:
 	enum operationTypeEnum { oteImage1Magnify,oteImage1Blur,oteImage1Color,oteImage2SSIM,oteImage2Merge };
 	struct storedOperation { Image1Magnify i1m; Image1Blur i1b; Image1Color i1c ; Image2SSIM i2s; Image2Merge i2m; operationTypeEnum ote = oteImage1Magnify; std::vector<int> affectedElements; };
 	std::vector<storedOperation> storedOperationsElement;
-};
+};*/
 
-class Image1Save : public Image1 {
+class Image1Save : public Image1 { //image0??????
 public:
-	void SaveFolder(Folder f, char* cstr, int j, StoredOperaionsClass storedOperationsElement);
+	bool SaveFolder(Folder f, std::string path, int n/*, StoredOperaionsClass storedOperationsElement*/);
+	bool Save(Image im, char* cstr);
 };
 
 class SurfaceModify {
@@ -227,6 +230,7 @@ public:
 	static Uint32 GetColor(int x, int y, SDL_Surface* sur);
 
 private:
+	static void plotLineMixed(int x0, int y0, int x1, int y1, SDL_Surface* sur);
 	static void plotLineLow(int x0, int y0, int x1, int y1, SDL_Surface* sur);
 	static void plotLineHigh(int x0, int y0, int x1, int y1, SDL_Surface* sur);
 	static void PutPixel32_nolock(int x, int y, Uint32 color, SDL_Surface* sur);
@@ -238,7 +242,7 @@ public:
 	static void ShowHelpMarker(const char* desc);
 	static Uint8 greyScale(Uint32 pixel, SDL_PixelFormat* format);
 	static Uint32 heatmapColor(float value);
-	static bool Verify(char* filePath, char* filePathv);
+	static bool Verify(char* filePath);
 
 	//add the save here
 
@@ -254,8 +258,10 @@ public:
 	//basic
 	bool Init();
 	void Clean();
-	void Update();
+	//void Update();
 	void Render();
+
+	void TestMethod();
 
 	void Resize(int, int);
 
@@ -263,16 +269,15 @@ public:
 protected:
 
 	void Back();
-	void SetBasicUI();
+	void SetBasicUI();//rn
 	void PushStyleColorGreenButton();
 
-	ImFont* arial; //delete?
-	//ImFont* notosans; //delete?
+	ImFont* arial;
 
 	std::vector<ImageFolder> imfVec;
 	std::vector<int> selectedImFVec;
 
-	std::vector<StoredOperaionsClass> storedOperationsVector;
+	//std::vector<StoredOperaionsClass> storedOperationsVector;
 
 	enum ColorEnum {
 		TEXT_LIGHT,
@@ -307,8 +312,8 @@ protected:
 
 	ImVec4 Colors[ColorEnum::NumberOfTypes];
 
-	enum ImageEnum {
-		SEMMIENUM,
+	enum ImageEnum { //rn
+		OPERATIONSENUM,
 
 		STATICNOISEENUM,
 		LOADENUM,
@@ -327,7 +332,6 @@ protected:
 	ImGuiWindowFlags window_flags;
 
 	char stradd[128];
-	char straddverified[128];
 	char outstr[128];
 	
 	Image0FromFile im0load;

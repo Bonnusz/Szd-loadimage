@@ -1302,7 +1302,7 @@ void CMyApp::Render()
 								else if (imfVec[selectedImFVec[i]].iof == iofFolder) {
 
 									im1sav.SaveFolder(imfVec[selectedImFVec[i]].f, path,n);
-
+									n += imfVec[selectedImFVec[i]].f.getImages().size();
 								}
 							}
 							currentMenuEnum = OPERATIONSENUM;
@@ -1606,17 +1606,21 @@ void CMyApp::Render()
 				}
 				else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
 					im1 = &imfVec[selectedImFVec[0]].im;
-					im2 = &imfVec[selectedImFVec[1]].f.getImages()[0];
+					Image segedMerge1 = imfVec[selectedImFVec[1]].f.getImages()[0];
+					im2 = &segedMerge1;
 				}
 			}
 			else if (imfVec[selectedImFVec[0]].iof == iofFolder) {
 				if (imfVec[selectedImFVec[1]].iof == iofImage) {
-					im1 = &imfVec[selectedImFVec[0]].f.getImages()[0];
+					Image segedMerge2 = imfVec[selectedImFVec[0]].f.getImages()[0];
+					im1 = &segedMerge2;
 					im2 = &imfVec[selectedImFVec[1]].im;
 				}
 				else if (imfVec[selectedImFVec[1]].iof == iofFolder) {
-					im1 = &imfVec[selectedImFVec[0]].f.getImages()[0];
-					im2 = &imfVec[selectedImFVec[1]].f.getImages()[0];
+					Image segedMerge3 = imfVec[selectedImFVec[0]].f.getImages()[0];
+					im1 = &segedMerge3;
+					Image segedMerge4 = imfVec[selectedImFVec[1]].f.getImages()[0];
+					im2 = &segedMerge4;
 				}
 			}
 
@@ -1717,7 +1721,12 @@ void CMyApp::Render()
 								if (fPointer->getImages()[i].getSurface()->w == imPointer->getSurface()->w && fPointer->getImages()[i].getSurface()->h == imPointer->getSurface()->h) {
 
 									im2merge.setImage(*imPointer);
-									im2merge.MergeMethod(*imPointer, fPointer->getImages()[i]);
+									if (imfVec[selectedImFVec[0]].iof == iofImage) {
+										im2merge.MergeMethod(*imPointer, fPointer->getImages()[i]);
+									}
+									else if(imfVec[selectedImFVec[0]].iof == iofFolder){
+										im2merge.MergeMethod(fPointer->getImages()[i], *imPointer);
+									}
 
 									SDL_Surface* source = im2merge.getImOut().getSurface();
 									SDL_Surface* destination = SDL_CreateRGBSurfaceWithFormat(0,
@@ -3248,7 +3257,6 @@ Image2Merge::Image2Merge(void){
 	slope = 45.0f;
 	ux = uy = 0;
 	upd = false;
-	swap = false;
 }
 
 void Image2Merge::Reset() {
@@ -3261,7 +3269,6 @@ void Image2Merge::Reset() {
 		ux = uy = 0;
 	}
 	upd = false;
-	swap = false;
 }
 
 void Image2Merge::editableDrawImage(Image im1, Image im2) {

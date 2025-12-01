@@ -229,7 +229,6 @@ public:
 
 
 protected:
-	bool swap;
 	float slope;
 	bool upd;
 	int ux, uy;
